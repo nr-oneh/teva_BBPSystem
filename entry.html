@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TEVA · Entry</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    :root{--teva:#747A4E;--teva-light:#B3B897;--teva-bg:#F4F5F0;--amber:#D4901A;--teal:#2D7A5E;--red:#C0392B;--gold:#C4A566;--f:'Montserrat',sans-serif;--fm:'Playfair Display',serif}
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{background:var(--teva-bg);font-family:var(--f);color:#1a1a2e;-webkit-font-smoothing:antialiased}
+    @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes slideIn{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:translateX(0)}}
+    .fade-up{animation:fadeUp .35s ease-out}.slide-in{animation:slideIn .3s ease-out}
+    input,select,textarea{font-family:var(--f);font-size:14px;padding:10px 14px;border:1.5px solid #d5d3c7;border-radius:10px;background:white;color:#1a1a2e;width:100%;transition:border-color .2s,box-shadow .2s;outline:none}
+    input:focus,select:focus,textarea:focus{border-color:var(--teva);box-shadow:0 0 0 3px rgba(116,122,78,0.12)}
+    input::placeholder{color:#b5b3a7}
+    select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23747A4E' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+    textarea{resize:vertical;min-height:72px}
+    button{font-family:var(--f);cursor:pointer;transition:all .2s}
+    ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#d5d3c7;border-radius:4px}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const{useState,useEffect,useCallback}=React;
+const n=v=>{const x=parseFloat(v);return isNaN(x)?null:x;};
+const CAT_COL={BURNT:"#D4901A",HYPERT:"#747A4E",RESET:"#2D7A5E"};
+
+// ─── API ───────────────────────────────────────────
+async function apiRead(sheet){
+  const url=localStorage.getItem("teva_api_url");if(!url)return null;
+  try{const r=await fetch(`${url}?sheet=${encodeURIComponent(sheet)}`);if(!r.ok)throw 0;return(await r.json()).data||[];}catch(e){return null;}
+}
+async function apiWrite(sheet,values){
+  const url=localStorage.getItem("teva_api_url");
+  if(!url){console.log(`[TEVA Demo] → ${sheet}`,values);return{success:true,demo:true};}
+  try{const r=await fetch(url,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({sheet,values})});const j=await r.json();if(j.error)throw new Error(j.error);return j;}
+  catch(e){console.log(`[TEVA Fallback] → ${sheet}`,values);return{success:true,demo:true};}
+}
+
+// ─── UI PRIMITIVES ─────────────────────────────────
+function F({label,type="text",value,onChange,placeholder,options,required,unit,half,disabled}){
+  return <div style={{flex:half?"1":"auto",minWidth:half?140:"auto"}}>
+    <label style={{display:"block",fontSize:11,fontWeight:600,color:"#747A4E",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5}}>{label}{required&&<span style={{color:"#C0392B",marginLeft:2}}>*</span>}{unit&&<span style={{fontWeight:400,textTransform:"none",color:"#999",marginLeft:4}}>({unit})</span>}</label>
+    {type==="select"?<select value={value||""} onChange={e=>onChange(e.target.value)} disabled={disabled}><option value="">Select...</option>{options.map(o=><option key={o} value={o}>{o}</option>)}</select>
+    :type==="textarea"?<textarea value={value||""} onChange={e=>onChange(e.target.value)} placeholder={placeholder} disabled={disabled}/>
+    :<input type={type} value={value||""} onChange={e=>onChange(e.target.value)} placeholder={placeholder} disabled={disabled} step={type==="number"?"0.1":undefined}/>}
+  </div>;
+}
+function FR({children}){return <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>{children}</div>;}
+function FC({children,s}){return <div className="fade-up" style={{background:"white",borderRadius:16,padding:"24px 28px",boxShadow:"0 1px 3px rgba(0,0,0,0.04)",border:"1px solid #e8e6d6",display:"flex",flexDirection:"column",gap:14,...s}}>{children}</div>;}
+function SH({t,i,c}){return <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,paddingBottom:10,borderBottom:`2px solid ${c||"#B3B897"}`}}><div style={{width:32,height:32,borderRadius:10,background:`${c||"#747A4E"}12`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:16}}>{i}</span></div><h3 style={{fontSize:16,fontWeight:700,fontFamily:"var(--fm)",color:c||"#747A4E"}}>{t}</h3></div>;}
+function Toast({m,ty,onClose}){if(!m)return null;return <div className="slide-in" style={{position:"fixed",top:20,right:20,zIndex:1000,background:ty==="success"?"#2D7A5E":ty==="error"?"#C0392B":"#D4901A",color:"white",padding:"12px 20px",borderRadius:12,fontSize:13,fontWeight:600,boxShadow:"0 8px 32px rgba(0,0,0,0.15)",display:"flex",alignItems:"center",gap:10,maxWidth:360}}><span>{m}</span><button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:6,padding:"2px 8px",color:"white",fontSize:16}}>×</button></div>;}
+function HR({l,v,u,p,inv}){const d=p!=null&&v!=null?v-p:null;const ok=d!=null?(inv?d<0:d>0):null;const dc=d==null||Math.abs(d)<0.05?"#999":ok?"#2D7A5E":"#C0392B";return <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #f0efe8"}}><span style={{fontSize:12,color:"#666"}}>{l}</span><div style={{display:"flex",alignItems:"baseline",gap:4}}><span style={{fontSize:16,fontWeight:700,fontFamily:"var(--fm)"}}>{v??'—'}</span><span style={{fontSize:10,color:"#999"}}>{u}</span>{d!=null&&Math.abs(d)>=0.05&&<span style={{fontSize:10,fontWeight:600,color:dc,marginLeft:4}}>{d>0?"↑":"↓"}{Math.abs(d).toFixed(1)}</span>}</div></div>;}
+
+// ─── FORM SECTIONS ─────────────────────────────────
+function EvoltForm({d,s}){const u=(k,v)=>s({...d,[k]:v});return <FC><SH t="Evolt 360 Scan" i="📊" c="#2D7A5E"/><F label="Scan Date" type="date" value={d.scan_date} onChange={v=>u("scan_date",v)} required/><FR><F label="Weight" type="number" value={d.weight_kg} onChange={v=>u("weight_kg",v)} unit="kg" required half/><F label="Skeletal Muscle" type="number" value={d.skeletal_muscle_kg} onChange={v=>u("skeletal_muscle_kg",v)} unit="kg" required half/></FR><FR><F label="Body Fat %" type="number" value={d.body_fat_pct} onChange={v=>u("body_fat_pct",v)} unit="%" required half/><F label="Body Fat Mass" type="number" value={d.body_fat_mass_kg} onChange={v=>u("body_fat_mass_kg",v)} unit="kg" half/></FR><FR><F label="Lean Mass" type="number" value={d.lean_mass_kg} onChange={v=>u("lean_mass_kg",v)} unit="kg" half/><F label="Bio Age" type="number" value={d.bio_age} onChange={v=>u("bio_age",v)} unit="yrs" required half/></FR><FR><F label="BWI" type="number" value={d.bwi_score} onChange={v=>u("bwi_score",v)} unit="/10" half/><F label="BMR" type="number" value={d.bmr_kcal} onChange={v=>u("bmr_kcal",v)} unit="kcal" half/></FR><FR><F label="TEE" type="number" value={d.tee_kcal} onChange={v=>u("tee_kcal",v)} unit="kcal" half/><F label="Total Water" type="number" value={d.total_water_kg} onChange={v=>u("total_water_kg",v)} unit="kg" half/></FR><FR><F label="Subcut. Fat" type="number" value={d.subcutaneous_fat_kg} onChange={v=>u("subcutaneous_fat_kg",v)} unit="kg" half/><F label="Visc. Fat Level" type="number" value={d.visceral_fat_level} onChange={v=>u("visceral_fat_level",v)} half/></FR><FR><F label="Visc. Fat Area" type="number" value={d.visceral_fat_area_cm2} onChange={v=>u("visceral_fat_area_cm2",v)} unit="cm²" half/><F label="Visc. Fat Mass" type="number" value={d.visceral_fat_mass_kg} onChange={v=>u("visceral_fat_mass_kg",v)} unit="kg" half/></FR><FR><F label="Protein" type="number" value={d.protein_kg} onChange={v=>u("protein_kg",v)} unit="kg" half/><F label="Mineral" type="number" value={d.mineral_kg} onChange={v=>u("mineral_kg",v)} unit="kg" half/></FR><FR><F label="Abdom. Circ." type="number" value={d.abdominal_circ_cm} onChange={v=>u("abdominal_circ_cm",v)} unit="cm" half/><F label="Waist/Hip" type="number" value={d.waist_hip_ratio} onChange={v=>u("waist_hip_ratio",v)} half/></FR><div style={{fontSize:11,fontWeight:600,color:"#747A4E",textTransform:"uppercase",letterSpacing:1.2,marginTop:4}}>Segmental</div>{["Left Arm","Right Arm","Torso","Left Leg","Right Leg"].map(seg=>{const k=seg.toLowerCase().replace(/ /g,"_");return <FR key={seg}><F label={`${seg} Lean`} type="number" value={d[`seg_${k}_lean`]} onChange={v=>u(`seg_${k}_lean`,v)} unit="kg" half/><F label={`${seg} Fat`} type="number" value={d[`seg_${k}_fat`]} onChange={v=>u(`seg_${k}_fat`,v)} unit="kg" half/></FR>;})}<FR><F label="Balance U/L" type="select" value={d.balance_upper_lower} onChange={v=>u("balance_upper_lower",v)} options={["Balanced","Unbalanced"]} half/><F label="Balance L/R" type="select" value={d.balance_left_right} onChange={v=>u("balance_left_right",v)} options={["Balanced","Unbalanced"]} half/></FR></FC>;}
+
+function VitalsForm({d,s}){const u=(k,v)=>s({...d,[k]:v});const sys=n(d.systolic_bp_mmhg);const bp=sys>=140?"Hypertension Stage 2":sys>=130?"Hypertension Stage 1":sys>=120?"Elevated":"Normal";return <FC><SH t="Vital Signs" i="❤️" c="#C0392B"/><F label="Date" type="date" value={d.assessment_date} onChange={v=>u("assessment_date",v)} required/><F label="Resting HR" type="number" value={d.resting_hr_bpm} onChange={v=>u("resting_hr_bpm",v)} unit="bpm" required/><FR><F label="Systolic" type="number" value={d.systolic_bp_mmhg} onChange={v=>u("systolic_bp_mmhg",v)} unit="mmHg" required half/><F label="Diastolic" type="number" value={d.diastolic_bp_mmhg} onChange={v=>u("diastolic_bp_mmhg",v)} unit="mmHg" required half/></FR>{sys&&<div style={{padding:"8px 14px",background:"#f8f8f4",borderRadius:10,fontSize:12}}>BP: <span style={{fontWeight:600,color:bp==="Normal"?"#2D7A5E":"#D4901A"}}>{bp}</span></div>}<F label="Notes" type="textarea" value={d.notes} onChange={v=>u("notes",v)} placeholder="Observations..."/></FC>;}
+
+function StrengthForm({d,s}){const u=(k,v)=>s({...d,[k]:v});const lA=[n(d.handgrip_L1_kg),n(d.handgrip_L2_kg),n(d.handgrip_L3_kg)].filter(x=>x!=null);const rA=[n(d.handgrip_R1_kg),n(d.handgrip_R2_kg),n(d.handgrip_R3_kg)].filter(x=>x!=null);const lM=lA.length?+(lA.reduce((a,b)=>a+b,0)/lA.length).toFixed(1):null;const rM=rA.length?+(rA.reduce((a,b)=>a+b,0)/rA.length).toFixed(1):null;const tA=lM!=null&&rM!=null?+((lM+rM)/2).toFixed(1):null;const as=lM&&rM&&Math.max(lM,rM)>0?+(Math.abs(lM-rM)/Math.max(lM,rM)*100).toFixed(1):null;return <FC><SH t="Strength Tests" i="💪" c="#D4901A"/><F label="Date" type="date" value={d.assessment_date} onChange={v=>u("assessment_date",v)} required/><div style={{fontSize:11,fontWeight:600,color:"#747A4E",textTransform:"uppercase",letterSpacing:1.2}}>Hand Grip — Left</div><FR><F label="L1" type="number" value={d.handgrip_L1_kg} onChange={v=>u("handgrip_L1_kg",v)} unit="kg" half/><F label="L2" type="number" value={d.handgrip_L2_kg} onChange={v=>u("handgrip_L2_kg",v)} unit="kg" half/></FR><F label="L3" type="number" value={d.handgrip_L3_kg} onChange={v=>u("handgrip_L3_kg",v)} unit="kg"/><div style={{fontSize:11,fontWeight:600,color:"#747A4E",textTransform:"uppercase",letterSpacing:1.2,marginTop:4}}>Hand Grip — Right</div><FR><F label="R1" type="number" value={d.handgrip_R1_kg} onChange={v=>u("handgrip_R1_kg",v)} unit="kg" half/><F label="R2" type="number" value={d.handgrip_R2_kg} onChange={v=>u("handgrip_R2_kg",v)} unit="kg" half/></FR><F label="R3" type="number" value={d.handgrip_R3_kg} onChange={v=>u("handgrip_R3_kg",v)} unit="kg"/>{tA!=null&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,padding:"12px",background:"#f8f8f4",borderRadius:10}}><div style={{textAlign:"center"}}><div style={{fontSize:10,color:"#888"}}>L</div><div style={{fontSize:16,fontWeight:700,fontFamily:"var(--fm)"}}>{lM}</div></div><div style={{textAlign:"center"}}><div style={{fontSize:10,color:"#888"}}>R</div><div style={{fontSize:16,fontWeight:700,fontFamily:"var(--fm)"}}>{rM}</div></div><div style={{textAlign:"center"}}><div style={{fontSize:10,color:"#888"}}>Avg</div><div style={{fontSize:16,fontWeight:700,fontFamily:"var(--fm)",color:"#747A4E"}}>{tA}</div></div><div style={{textAlign:"center"}}><div style={{fontSize:10,color:"#888"}}>Asym</div><div style={{fontSize:16,fontWeight:700,fontFamily:"var(--fm)",color:as>10?"#C0392B":as>5?"#D4901A":"#2D7A5E"}}>{as}%</div></div></div>}<FR><F label="Push-ups" type="number" value={d.pushups_count} onChange={v=>u("pushups_count",v)} unit="reps" half/><F label="Balance" type="number" value={d.balance_score} onChange={v=>u("balance_score",v)} unit="/100" half/></FR><F label="Protocol" type="select" value={d.balance_protocol} onChange={v=>u("balance_protocol",v)} options={["Single leg stance","Y-Balance","Other"]}/></FC>;}
+
+function YoggerForm({d,s}){const u=(k,v)=>s({...d,[k]:v});return <FC><SH t="Yogger Assessment" i="🧘" c="#2D7A5E"/><F label="Date" type="date" value={d.assessment_date} onChange={v=>u("assessment_date",v)} required/><FR><F label="Posture" type="number" value={d.posture_score} onChange={v=>u("posture_score",v)} unit="/100" half/><F label="Single Leg Squat" type="number" value={d.sls_score} onChange={v=>u("sls_score",v)} unit="/100" half/></FR><FR><F label="Overhead Squat" type="number" value={d.ohs_score} onChange={v=>u("ohs_score",v)} unit="/100" half/><F label="OHS Stability" type="number" value={d.ohs_stability} onChange={v=>u("ohs_stability",v)} unit="/5" half/></FR><F label="Shoulder Flexion" type="number" value={d.shoulder_flexion_score} onChange={v=>u("shoulder_flexion_score",v)} unit="/100"/></FC>;}
+
+function CalibreForm({d,s}){const u=(k,v)=>s({...d,[k]:v});return <FC><SH t="Calibre VO₂max" i="🫁" c="#747A4E"/><F label="Test Date" type="date" value={d.test_date} onChange={v=>u("test_date",v)} required/><FR><F label="VO₂max Est." type="number" value={d.vo2max_estimated} onChange={v=>u("vo2max_estimated",v)} unit="ml/kg/min" required half/><F label="Peak HR" type="number" value={d.peak_hr_bpm} onChange={v=>u("peak_hr_bpm",v)} unit="bpm" half/></FR><F label="Peak VO₂ Abs." type="number" value={d.peak_vo2_Lmin} onChange={v=>u("peak_vo2_Lmin",v)} unit="L/min"/></FC>;}
+
+function TargetsForm({d,s,cat}){const u=(k,v)=>s({...d,[k]:v});const c=CAT_COL[cat]||"#747A4E";return <FC><SH t="Client Targets" i="🎯" c={c}/><FR><F label="Cycle Start" type="date" value={d.cycle_start_date} onChange={v=>u("cycle_start_date",v)} required half/><F label="Target Date" type="date" value={d.target_date} onChange={v=>u("target_date",v)} required half/></FR><FR><F label="Target BF%" type="number" value={d.target_body_fat_pct} onChange={v=>u("target_body_fat_pct",v)} unit="%" half/><F label="Target Muscle" type="number" value={d.target_skeletal_muscle_kg} onChange={v=>u("target_skeletal_muscle_kg",v)} unit="kg" half/></FR><FR><F label="Target Bio Age" type="number" value={d.target_bio_age} onChange={v=>u("target_bio_age",v)} half/><F label="Target VO₂" type="number" value={d.target_vo2max} onChange={v=>u("target_vo2max",v)} unit="ml/kg/min" half/></FR><FR><F label="Target HR" type="number" value={d.target_resting_hr} onChange={v=>u("target_resting_hr",v)} unit="bpm" half/><F label="Target BP" type="number" value={d.target_bp_systolic} onChange={v=>u("target_bp_systolic",v)} unit="mmHg" half/></FR><FR><F label="Target Grip" type="number" value={d.target_handgrip_avg} onChange={v=>u("target_handgrip_avg",v)} unit="kg" half/><F label="Target Push-ups" type="number" value={d.target_pushups} onChange={v=>u("target_pushups",v)} unit="reps" half/></FR><F label="Strategy Notes" type="textarea" value={d.trainer_notes} onChange={v=>u("trainer_notes",v)} placeholder="Training strategy and justification..."/></FC>;}
+
+// ─── MAIN APP ──────────────────────────────────────
+function App(){
+  const[configured,setConfigured]=useState(!!localStorage.getItem("teva_api_url")||!!localStorage.getItem("teva_skip"));
+  const[clients,setClients]=useState([]);
+  const[loading,setLoading]=useState(true);
+  const[ac,setAc]=useState(null);
+  const[view,setView]=useState("list");
+  const[search,setSearch]=useState("");
+  const[toast,setToast]=useState(null);
+  const[saving,setSaving]=useState(false);
+  const[step,setStep]=useState(0);
+  const[isNew,setIsNew]=useState(false);
+  const[cd,setCd]=useState({});
+  const[ev,setEv]=useState({});
+  const[vi,setVi]=useState({});
+  const[st,setSt2]=useState({});
+  const[yo,setYo]=useState({});
+  const[ca,setCa2]=useState({});
+  const[tg,setTg]=useState({});
+  // History data
+  const[hScans,setHScans]=useState([]);
+  const[hVitals,setHVitals]=useState(null);
+  const[hStrength,setHStrength]=useState(null);
+
+  const showT=(m,ty="success")=>{setToast({m,ty});setTimeout(()=>setToast(null),3500);};
+
+  // Load clients
+  useEffect(()=>{
+    (async()=>{
+      const data=await apiRead("Clients");
+      if(data&&data.length>0){setClients(data);}
+      else{setClients([{client_id:"ADAM001",name:"Adam",age:"38",height_cm:"173",gender:"Male",category:"HYPERT"},{client_id:"HENR001",name:"Henrikke",age:"37",height_cm:"164",gender:"Female",category:"BURNT"},{client_id:"NOE001",name:"Noé",age:"39",height_cm:"174",gender:"Male",category:"HYPERT"}]);}
+      setLoading(false);
+    })();
+  },[configured]);
+
+  // Load history when selecting a client
+  const loadHistory=useCallback(async(cid)=>{
+    const scans=await apiRead("Evolt_Scans");
+    if(scans){
+      const cs=scans.filter(r=>r.client_id===cid).map(r=>({date:r.scan_date,weight:n(r.weight_kg),skeletalMuscle:n(r.skeletal_muscle_kg),bodyFatPct:n(r.body_fat_pct),bioAge:n(r.bio_age),bwi:n(r.bwi_score),bmr:n(r.bmr_kcal)})).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+      setHScans(cs);
+    }else setHScans([]);
+    const vit=await apiRead("Vital_Signs");
+    if(vit){const cv=vit.filter(r=>r.client_id===cid).sort((a,b)=>(b.assessment_date||"").localeCompare(a.assessment_date||""));if(cv[0])setHVitals({date:cv[0].assessment_date,restingHR:n(cv[0].resting_hr_bpm),systolic:n(cv[0].systolic_bp_mmhg),diastolic:n(cv[0].diastolic_bp_mmhg)});else setHVitals(null);}else setHVitals(null);
+    const str=await apiRead("Strength_Tests");
+    if(str){const cs2=str.filter(r=>r.client_id===cid).sort((a,b)=>(b.assessment_date||"").localeCompare(a.assessment_date||""));if(cs2[0])setHStrength({date:cs2[0].assessment_date,gripTotalAvg:n(cs2[0].handgrip_total_avg_kg),gripAsymmetry:n(cs2[0].handgrip_asymmetry_pct),pushups:n(cs2[0].pushups_count),balance:n(cs2[0].balance_score)});else setHStrength(null);}else setHStrength(null);
+  },[]);
+
+  const selClient=async(c)=>{setAc(c);setCd(c);setView("history");await loadHistory(c.client_id);};
+  const startNew=()=>{setAc(null);setCd({});setEv({});setVi({});setSt2({});setYo({});setCa2({});setTg({});setStep(0);setIsNew(true);setView("form");};
+  const startEntry=()=>{const t=new Date().toISOString().slice(0,10);const id=ac?.client_id;setEv({scan_date:t,client_id:id});setVi({assessment_date:t,client_id:id});setSt2({assessment_date:t,client_id:id});setYo({assessment_date:t,client_id:id});setCa2({test_date:t,client_id:id});setTg({client_id:id,category:ac?.category});setStep(0);setIsNew(false);setView("form");};
+
+  const handleSetup=(url)=>{if(url)localStorage.setItem("teva_api_url",url);else localStorage.setItem("teva_skip","1");setConfigured(true);};
+
+  const secs=[
+    ...(isNew?[{id:"client",label:"Client Info",sheet:"Clients",getData:()=>cd,comp:<FC><SH t="New Client" i="👤" c="#747A4E"/><FR><F label="Client ID" value={cd.client_id} onChange={v=>setCd({...cd,client_id:v})} placeholder="e.g. ADAM001" required half/><F label="Full Name" value={cd.name} onChange={v=>setCd({...cd,name:v})} required half/></FR><FR><F label="Age" type="number" value={cd.age} onChange={v=>setCd({...cd,age:v})} required half/><F label="Height" type="number" value={cd.height_cm} onChange={v=>setCd({...cd,height_cm:v})} unit="cm" required half/></FR><FR><F label="Gender" type="select" value={cd.gender} onChange={v=>setCd({...cd,gender:v})} options={["Male","Female"]} required half/><F label="Category" type="select" value={cd.category} onChange={v=>setCd({...cd,category:v})} options={["BURNT","HYPERT","RESET"]} required half/></FR></FC>}]:[]),
+    {id:"evolt",label:"Evolt Scan",sheet:"Evolt_Scans",getData:()=>({client_id:ac?.client_id||cd.client_id,...ev}),comp:<EvoltForm d={ev} s={setEv}/>},
+    {id:"vitals",label:"Vitals",sheet:"Vital_Signs",getData:()=>({client_id:ac?.client_id||cd.client_id,...vi}),comp:<VitalsForm d={vi} s={setVi}/>},
+    {id:"strength",label:"Strength",sheet:"Strength_Tests",getData:()=>({client_id:ac?.client_id||cd.client_id,...st}),comp:<StrengthForm d={st} s={setSt2}/>},
+    {id:"yogger",label:"Yogger",sheet:"Yogger_Assessments",getData:()=>({client_id:ac?.client_id||cd.client_id,...yo}),comp:<YoggerForm d={yo} s={setYo}/>},
+    {id:"calibre",label:"VO₂",sheet:"Calibre_VO2",getData:()=>({client_id:ac?.client_id||cd.client_id,...ca}),comp:<CalibreForm d={ca} s={setCa2}/>},
+    {id:"targets",label:"Targets",sheet:"Client_Targets",getData:()=>({client_id:ac?.client_id||cd.client_id,...tg}),comp:<TargetsForm d={tg} s={setTg} cat={ac?.category||cd.category}/>},
+  ];
+
+  const handleSave=async()=>{setSaving(true);try{const sec=secs[step];const res=await apiWrite(sec.sheet,sec.getData());showT(`${sec.label} saved${res.demo?" (demo)":""}`);if(step<secs.length-1)setStep(step+1);else{showT("All sections complete!");if(ac)await loadHistory(ac.client_id);setView("history");}}catch(e){showT(e.message,"error");}setSaving(false);};
+
+  // ─── SETUP SCREEN ────────────────────────────
+  if(!configured){
+    const[url,setUrl]=useState("");
+    return <div className="fade-up" style={{maxWidth:480,margin:"60px auto",padding:32,background:"white",borderRadius:20,border:"1px solid #e8e6d6",boxShadow:"0 4px 24px rgba(0,0,0,0.06)"}}>
+      <div style={{textAlign:"center",marginBottom:24}}><div style={{fontSize:10,letterSpacing:3,color:"#B3B897",textTransform:"uppercase"}}>TEVA Wellness & Lifestyle</div><div style={{fontSize:24,fontWeight:700,fontFamily:"var(--fm)",color:"#747A4E",marginTop:4}}>Connect to Sheets</div></div>
+      <div style={{fontSize:13,color:"#666",lineHeight:1.7,marginBottom:20}}>Paste your Google Apps Script deployment URL to enable live data sync with your TEVA Google Sheet.</div>
+      <F label="Apps Script URL" value={url} onChange={setUrl} placeholder="https://script.google.com/macros/s/.../exec"/>
+      <div style={{display:"flex",gap:12,marginTop:16}}>
+        <button onClick={()=>handleSetup("")} style={{flex:1,padding:"12px",borderRadius:12,border:"1.5px solid #d5d3c7",background:"white",color:"#666",fontSize:13,fontWeight:600}}>Demo Mode</button>
+        <button onClick={()=>{if(url)handleSetup(url)}} disabled={!url} style={{flex:1,padding:"12px",borderRadius:12,border:"none",background:url?"#747A4E":"#d5d3c7",color:"white",fontSize:13,fontWeight:700,opacity:url?1:0.5}}>Connect</button>
+      </div>
+    </div>;
+  }
+
+  if(loading) return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}><div style={{width:40,height:40,border:"3px solid rgba(116,122,78,0.2)",borderTop:"3px solid #747A4E",borderRadius:"50%",animation:"spin 1s linear infinite"}}/><div style={{color:"#999",fontSize:12}}>Loading clients...</div></div>;
+
+  const filtered=clients.filter(c=>(c.name||"").toLowerCase().includes(search.toLowerCase())||(c.client_id||"").toLowerCase().includes(search.toLowerCase()));
+
+  return <div style={{minHeight:"100vh"}}>
+    {/* HEADER */}
+    <div style={{background:"#747A4E",padding:"12px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,zIndex:100,boxShadow:"0 2px 12px rgba(0,0,0,0.1)"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
+        {view!=="list"&&<button onClick={()=>{if(view==="form"&&!isNew)setView("history");else{setView("list");setAc(null)}}} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,padding:"6px 10px",color:"white",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",gap:4}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>}
+        <div><div style={{fontSize:7,letterSpacing:3,color:"#B3B897",textTransform:"uppercase"}}>TEVA Wellness & Lifestyle</div><div style={{fontSize:16,fontWeight:700,color:"white",fontFamily:"var(--fm)"}}>Body Blueprint Entry</div></div>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        {ac&&<div style={{display:"flex",alignItems:"center",gap:5,background:"rgba(255,255,255,0.1)",borderRadius:16,padding:"4px 12px"}}><div style={{width:6,height:6,borderRadius:"50%",background:CAT_COL[ac.category]||"#B3B897"}}/><span style={{fontSize:11,fontWeight:600,color:"white"}}>{ac.name}</span></div>}
+        <button onClick={()=>{localStorage.removeItem("teva_api_url");localStorage.removeItem("teva_skip");setConfigured(false)}} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"4px 8px",color:"#B3B897",fontSize:9}} title="Settings">⚙</button>
+      </div>
+    </div>
+
+    <Toast m={toast?.m} ty={toast?.ty} onClose={()=>setToast(null)}/>
+
+    <div style={{maxWidth:680,margin:"0 auto",padding:"16px 16px 40px"}}>
+      {/* CLIENT LIST */}
+      {view==="list"&&<div className="fade-up">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <h2 style={{fontSize:20,fontWeight:700,fontFamily:"var(--fm)",color:"#747A4E"}}>Clients</h2>
+          <button onClick={startNew} style={{background:"#747A4E",color:"white",border:"none",borderRadius:12,padding:"10px 18px",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",gap:6,boxShadow:"0 2px 8px rgba(116,122,78,0.3)"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>New Client</button>
+        </div>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search clients..." style={{marginBottom:12}}/>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>{filtered.map(c=>{
+          const col=CAT_COL[c.category]||"#747A4E";
+          return <div key={c.client_id} onClick={()=>selClient(c)} style={{padding:"14px 18px",borderRadius:14,border:"1.5px solid #e8e6d6",background:"#fafaf5",cursor:"pointer",transition:"all .2s"}} onMouseEnter={e=>{e.currentTarget.style.background="white";e.currentTarget.style.transform="translateY(-1px)"}} onMouseLeave={e=>{e.currentTarget.style.background="#fafaf5";e.currentTarget.style.transform="none"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style={{fontSize:14,fontWeight:700,fontFamily:"var(--fm)"}}>{c.name}</div><div style={{fontSize:11,color:"#888",marginTop:2}}>{c.age}y · {c.height_cm}cm · {c.gender}</div></div><div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:8,height:8,borderRadius:"50%",background:col}}/><span style={{fontSize:10,fontWeight:700,color:col,fontFamily:"var(--fm)"}}>{c.category}</span></div></div>
+          </div>;
+        })}{filtered.length===0&&<div style={{padding:32,textAlign:"center",color:"#aaa",fontSize:13}}>No clients found</div>}</div>
+      </div>}
+
+      {/* HISTORY */}
+      {view==="history"&&ac&&<div className="fade-up">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <div><h2 style={{fontSize:20,fontWeight:700,fontFamily:"var(--fm)"}}>{ac.name}</h2><div style={{fontSize:11,color:"#888"}}>{ac.age}y · {ac.height_cm}cm · {ac.gender}</div></div>
+          <button onClick={startEntry} style={{background:"#2D7A5E",color:"white",border:"none",borderRadius:12,padding:"10px 18px",fontSize:12,fontWeight:600,boxShadow:"0 2px 8px rgba(45,122,94,0.3)"}}>+ New Assessment</button>
+        </div>
+        {(()=>{const la=hScans[hScans.length-1];const pr=hScans.length>1?hScans[hScans.length-2]:null;
+          if(!la&&!hVitals&&!hStrength)return <div style={{padding:32,textAlign:"center",color:"#aaa",fontSize:13}}>No data recorded yet. Tap "New Assessment" to start.</div>;
+          return <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            {la&&<FC><SH t={`Latest Scan — ${la.date}`} i="📊" c="#2D7A5E"/><HR l="Weight" v={la.weight} u="kg" p={pr?.weight}/><HR l="Skeletal Muscle" v={la.skeletalMuscle} u="kg" p={pr?.skeletalMuscle}/><HR l="Body Fat %" v={la.bodyFatPct} u="%" p={pr?.bodyFatPct} inv/><HR l="Bio Age" v={la.bioAge} u="yrs" p={pr?.bioAge} inv/><HR l="BWI" v={la.bwi} u="/10" p={pr?.bwi}/><HR l="BMR" v={la.bmr} u="kcal" p={pr?.bmr}/>{hScans.length>1&&<div style={{fontSize:10,color:"#999",textAlign:"center",marginTop:4}}>{hScans.length} scans · First: {hScans[0].date}</div>}</FC>}
+            {hVitals&&<FC><SH t={`Vitals — ${hVitals.date}`} i="❤️" c="#C0392B"/><HR l="Resting HR" v={hVitals.restingHR} u="bpm"/><HR l="Blood Pressure" v={hVitals.systolic&&hVitals.diastolic?`${hVitals.systolic}/${hVitals.diastolic}`:null} u="mmHg"/></FC>}
+            {hStrength&&<FC><SH t={`Strength — ${hStrength.date}`} i="💪" c="#D4901A"/><HR l="Grip Total Avg" v={hStrength.gripTotalAvg} u="kg"/><HR l="Asymmetry" v={hStrength.gripAsymmetry} u="%"/><HR l="Push-ups" v={hStrength.pushups} u="reps"/><HR l="Balance" v={hStrength.balance} u="/100"/></FC>}
+          </div>;
+        })()}
+      </div>}
+
+      {/* FORM */}
+      {view==="form"&&<div className="fade-up">
+        <div style={{display:"flex",gap:4,marginBottom:16,overflowX:"auto",paddingBottom:4}}>{secs.map((s,i)=><button key={s.id} onClick={()=>setStep(i)} style={{padding:"6px 12px",borderRadius:20,border:i===step?"2px solid #747A4E":"1.5px solid #d5d3c7",background:i===step?"white":"transparent",color:i===step?"#747A4E":i<step?"#2D7A5E":"#999",fontSize:10,fontWeight:600,whiteSpace:"nowrap"}}>{i<step?"✓ ":""}{s.label}</button>)}</div>
+        {secs[step]?.comp}
+        <div style={{display:"flex",gap:12,marginTop:14}}>
+          <button disabled={step===0} onClick={()=>setStep(Math.max(0,step-1))} style={{flex:1,padding:"12px",borderRadius:12,border:"1.5px solid #d5d3c7",background:"white",color:step===0?"#ccc":"#666",fontSize:13,fontWeight:600,opacity:step===0?0.5:1}}>← Previous</button>
+          <button onClick={handleSave} disabled={saving} style={{flex:1,padding:"12px",borderRadius:12,border:"none",background:saving?"#B3B897":"#747A4E",color:"white",fontSize:13,fontWeight:700,boxShadow:"0 2px 8px rgba(116,122,78,0.3)",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+            {saving&&<div style={{width:14,height:14,border:"2px solid rgba(255,255,255,0.3)",borderTop:"2px solid white",borderRadius:"50%",animation:"spin .8s linear infinite"}}/>}
+            {saving?"Saving...":step<secs.length-1?"Save & Next →":"Save & Finish ✓"}
+          </button>
+        </div>
+        {step<secs.length-1&&<button onClick={()=>setStep(step+1)} style={{width:"100%",marginTop:8,padding:"10px",border:"none",background:"transparent",color:"#999",fontSize:11}}>Skip this section →</button>}
+      </div>}
+    </div>
+    <div style={{textAlign:"center",padding:"16px",borderTop:"1px solid #e0ddd0"}}><div style={{fontSize:8,letterSpacing:2,color:"#b5b3a7",textTransform:"uppercase"}}>TEVA Wellness & Lifestyle · Body Blueprint Entry · Elevate your being.</div></div>
+  </div>;
+}
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+</script>
+</body>
+</html>
