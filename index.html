@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TEVA System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;700italic&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.32.0/plotly.min.js"></script>
+  <style>
+    :root{--bg:#0a0a0f;--panel:#11131b;--panel2:#161925;--line:rgba(255,255,255,.08);--text:#f3efe6;--muted:#b7bcc8;--soft:#8c94a3;--gold:#C4A566;--amber:#D4901A;--olive:#747A4E;--teal:#2D7A5E;--red:#C0392B;--shadow:0 24px 80px rgba(0,0,0,.42)}
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body,#root{width:100%;min-height:100%;background:var(--bg);color:var(--text);font-family:Montserrat,sans-serif;overflow-x:hidden}
+    body{background:radial-gradient(circle at top left,rgba(116,122,78,.16),transparent 28%),radial-gradient(circle at top right,rgba(45,122,94,.12),transparent 22%),linear-gradient(180deg,#090a0e 0%,#0a0a0f 100%)}
+    button,input,select,textarea{font:inherit}
+    @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    .fade-up{animation:fadeUp .3s ease-out}
+    /* ── LAYOUT ── */
+    .app{width:100%;min-height:100vh;padding:20px}
+    .topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 20px;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);margin-bottom:18px}
+    .brand{display:flex;gap:14px;align-items:center}
+    .mark{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,var(--olive),var(--teal));font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:white;flex-shrink:0}
+    .brand h1{font-size:18px;font-weight:700}.brand p{color:var(--muted);font-size:11px;margin-top:3px}
+    .actions,.footer-actions,.tabbar,.subtabs,.status-row,.stack{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    /* ── BUTTONS ── */
+    .btn{border-radius:12px;padding:9px 14px;cursor:pointer;background:rgba(255,255,255,.05);color:#fff;border:1px solid var(--line);font-size:12px;font-weight:600;transition:.2s}
+    .btn:hover{transform:translateY(-1px);background:rgba(255,255,255,.09)}
+    .btn.primary{background:linear-gradient(135deg,var(--olive),var(--teal));border:none}
+    .btn.warn{background:linear-gradient(135deg,#9c6b13,var(--amber));border:none}
+    .btn.danger{background:linear-gradient(135deg,#7d2921,var(--red));border:none}
+    .btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+    .tab{padding:9px 14px;border-radius:999px;border:1px solid var(--line);cursor:pointer;background:rgba(255,255,255,.03);color:var(--muted);font-size:12px;font-weight:600;transition:.2s}
+    .tab.active{color:#fff;background:rgba(196,165,102,.14);border-color:rgba(196,165,102,.35)}
+    .subtab{padding:7px 12px;border-radius:999px;border:1px solid var(--line);cursor:pointer;background:rgba(255,255,255,.03);color:var(--muted);font-size:11px;font-weight:600;transition:.2s}
+    .subtab.active{color:#fff;background:rgba(116,122,78,.2);border-color:rgba(116,122,78,.45)}
+    /* ── LAYOUT GRID ── */
+    .layout{display:grid;grid-template-columns:minmax(280px,340px) minmax(0,1fr);gap:18px;width:100%}
+    .content{display:grid;gap:18px}
+    /* ── CARDS ── */
+    .card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);overflow:hidden}
+    .card-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line)}
+    .card-head h2,.card-head h3{margin:0;font-size:15px;font-weight:700}
+    .card-body{padding:16px}
+    /* ── TYPE ── */
+    .small{font-size:11px;color:var(--muted)}.eyebrow{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:700}
+    /* ── INPUTS ── */
+    .search,.inp,.sel,.ta{width:100%;padding:11px 14px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid var(--line);color:#f3efe6 !important;font-size:13px;transition:.2s}
+    .inp:focus,.sel:focus,.ta:focus,.search:focus{border-color:rgba(116,122,78,.6);outline:none;box-shadow:0 0 0 3px rgba(116,122,78,.1)}
+    .ta{min-height:90px;resize:vertical}
+    .sel{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23B3B897' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;color:#f3efe6 !important}
+    .sel option{background:#1a1d28;color:#f3efe6;padding:8px}
+    .search,.search option{background:rgba(255,255,255,.04);color:#f3efe6}
+    .field{display:flex;flex-direction:column;gap:6px}
+    .flabel{font-size:10px;color:var(--soft);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+    /* ── GRIDS ── */
+    .g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    .g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .fg2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    /* ── METRIC CARDS ── */
+    .mini,.metric,.kpi,.pmini{padding:14px;border-radius:16px;border:1px solid var(--line);background:rgba(255,255,255,.03);overflow:hidden}
+    .mini .k,.metric .label,.kpi .label,.pmini .label{font-size:10px;color:var(--soft);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+    .mini .v{display:block;font-weight:700;margin-top:6px;font-size:clamp(16px,1.5vw,26px);line-height:1.05}
+    .metric .value{display:block;font-weight:700;margin-top:6px;font-size:clamp(18px,1.7vw,28px);line-height:1.05}
+    .kpi .value{display:block;font-weight:700;margin-top:6px;font-size:clamp(22px,2vw,34px);font-family:'Playfair Display',serif;line-height:1.05}
+    .pmini .value{display:block;font-weight:700;margin-top:6px;font-size:clamp(16px,1.4vw,24px);line-height:1.05}
+    /* ── HERO ── */
+    .hero{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}
+    .hero-copy{padding:26px}.hero-copy h2{font-family:'Playfair Display',serif;font-size:clamp(34px,3vw,52px);line-height:.96;letter-spacing:-.03em;margin:8px 0 10px}
+    .hero-copy p{color:var(--muted);line-height:1.8;font-size:13px}
+    .hero-meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:16px}
+    /* ── BADGES / PILLS ── */
+    .badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:700;margin-top:6px}
+    .burnt{background:rgba(212,144,26,.18);color:#f0c164}.hypert{background:rgba(116,122,78,.2);color:#dbe4bf}.reset{background:rgba(45,122,94,.2);color:#9fe0c5}
+    .pill{padding:4px 8px;border-radius:999px;border:1px solid var(--line);font-size:10px;color:var(--muted);background:rgba(255,255,255,.03)}
+    /* ── ASSESSMENT LIST ── */
+    .arow{padding:14px;border-radius:16px;border:1px solid var(--line);background:rgba(255,255,255,.03);cursor:pointer;transition:.2s}
+    .arow:hover{background:rgba(255,255,255,.06)}
+    .arow.active{border-color:rgba(196,165,102,.45);background:rgba(196,165,102,.06)}
+    .alist{display:grid;gap:8px}
+    /* ── DIAGNOSIS BLOCK ── */
+    .diag{padding:16px;border-radius:18px;border:1px solid var(--line);background:rgba(255,255,255,.03)}
+    .diag p{margin:6px 0 0;color:var(--muted);line-height:1.8;font-size:13px}
+    /* ── SEGMENT ── */
+    .seg-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+    .seg{text-align:center;padding:12px;border-radius:16px;border:1px solid var(--line);background:rgba(255,255,255,.03)}
+    .seg h5{margin:0 0 6px;font-size:10px;color:var(--soft);text-transform:uppercase}
+    .seg .v{font-size:22px;font-weight:700}
+    /* ── MOBILITY MAP ── */
+    .mob-layout{display:grid;grid-template-columns:minmax(320px,.9fr) minmax(380px,1.1fr);gap:18px;align-items:center}
+    .sil-box{position:relative;min-height:460px;border:1px solid var(--line);border-radius:22px;background:radial-gradient(circle at center,rgba(255,255,255,.05),rgba(255,255,255,.015) 46%,transparent 72%);overflow:hidden}
+    .sil-box svg{width:100%;height:100%}
+    .glow-r{opacity:.35;transition:.22s}.glow-r.active{opacity:.9}
+    .spot{position:absolute;padding:8px 10px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid var(--line);font-size:11px;cursor:pointer;backdrop-filter:blur(10px);min-width:100px}
+    .spot strong{display:block;font-size:12px;margin-bottom:2px}
+    .spot.active{outline:1px solid rgba(196,165,102,.4);background:rgba(196,165,102,.08)}
+    .spot.s1{left:10px;top:122px}.spot.s2{right:10px;top:122px}.spot.s3{left:50%;transform:translateX(-50%);top:18px}.spot.s4{left:14px;bottom:32px}.spot.s5{right:14px;bottom:32px}
+    .radar-wrap{display:flex;justify-content:center;align-items:center;min-height:460px}
+    /* ── PLOT ── */
+    .plot,.plot-sm{width:100%}.plot{min-height:300px}.plot-sm{min-height:260px}
+    /* ── MISC ── */
+    .line{height:1px;background:var(--line);margin:14px 0}
+    .empty,.loading{padding:24px;border:1px dashed var(--line);border-radius:18px;color:var(--muted);text-align:center;font-size:13px}
+    .status-ok{color:#9fe0c5}.status-bad{color:#f08f82}
+    .legend{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:8px}
+    .legend>div{padding:8px;border-radius:10px;border:1px solid var(--line);font-size:10px;color:var(--muted);text-align:center}
+    /* ── VALIDATION BADGE ── */
+    .valid-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:10px;font-weight:700}
+    .valid-ok{background:rgba(45,122,94,.2);color:#9fe0c5}.valid-ko{background:rgba(192,57,43,.2);color:#f08f82}
+    /* ── RESPONSIVE ── */
+    @media(max-width:1180px){.layout,.hero,.g2,.mob-layout{grid-template-columns:1fr}.hero-meta,.g4,.seg-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:720px){.app{padding:12px}.g4,.hero-meta,.seg-grid{grid-template-columns:1fr}.g3{grid-template-columns:repeat(2,minmax(0,1fr))}.sil-box,.radar-wrap{min-height:380px}}
+    @media print{.topbar,.tabbar,.no-print,.footer-actions{display:none!important}.layout,.hero,.g2,.g4,.mob-layout,.seg-grid{display:block!important}.card,.metric,.kpi,.mini,.seg,.pmini,.diag{box-shadow:none;background:#fff!important;color:#111;border:1px solid #ddd}.app{padding:0}body{background:#fff;color:#111}}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const{useState,useEffect,useRef,useMemo,useCallback}=React;
+
+// ─── CONFIG ────────────────────────────────────────
+const BACKEND_URL = localStorage.getItem("teva_api_url") || "";
+const CAT_COL={BURNT:"#D4901A",HYPERT:"#747A4E",RESET:"#2D7A5E"};
+
+// ─── HELPERS ───────────────────────────────────────
+const safe=(v,fb='—')=>Number.isFinite(Number(v))?Number(v):fb;
+const n=v=>{const x=parseFloat(v);return isNaN(x)?null:x;};
+const clone=o=>JSON.parse(JSON.stringify(o));
+const fmt=d=>{if(!d)return'—';const dt=new Date(d);return isNaN(dt)?d:`${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}/${dt.getFullYear()}`};
+function setPath(obj,path,val){const k=path.split('.');let r=obj;for(let i=0;i<k.length-1;i++)r=r[k[i]];r[k[k.length-1]]=val;}
+const mkId=pre=>`${pre}-${new Date().getFullYear()}-${Math.floor(Math.random()*9000+1000)}`;
+
+function classifyBP(s,d){const sv=Number(s),dv=Number(d);if(!Number.isFinite(sv)||!Number.isFinite(dv))return'';if(sv>=140||dv>=90)return'HTN Stage 2';if(sv>=130||dv>=80)return'HTN Stage 1';if(sv>=120)return'Elevated';return'Normal';}
+
+function recalcGrip(st){
+  const L=['l1','l2','l3'].map(k=>n(st[`grip_L${k}`])).filter(x=>x!=null);
+  const R=['l1','l2','l3'].map(k=>n(st[`grip_R${k}`])).filter(x=>x!=null);
+  const avg=arr=>arr.length?+(arr.reduce((a,b)=>a+b)/arr.length).toFixed(1):null;
+  st.grip_L_avg=avg(L);st.grip_R_avg=avg(R);
+  st.grip_total_avg=st.grip_L_avg!=null&&st.grip_R_avg!=null?+((st.grip_L_avg+st.grip_R_avg)/2).toFixed(1):null;
+  st.grip_asym_pct=st.grip_L_avg!=null&&st.grip_R_avg!=null&&Math.max(st.grip_L_avg,st.grip_R_avg)>0?+(Math.abs(st.grip_L_avg-st.grip_R_avg)/Math.max(st.grip_L_avg,st.grip_R_avg)*100).toFixed(1):null;
+}
+
+function vo2Validate(vo2,clientAge){
+  // RER ≥ 1.10 and HR ≥ 85% HRmax
+  const rerOk=Number(vo2.peak_rer)>=1.10;
+  const hrMax=220-(Number(clientAge)||35);
+  const hrOk=Number(vo2.peak_hr_bpm)>=hrMax*0.85;
+  return{rerOk,hrOk,valid:rerOk&&hrOk};
+}
+
+function normalizeClient(raw){
+  return {
+    client_id: raw.client_id || raw.id || mkId('CL'),
+    name: raw.name || raw.full_name || raw.nombre || raw.Name || raw.NOMBRE || '',
+    age: raw.age || raw.edad || raw.Age || '',
+    height_cm: raw.height_cm || raw.height || raw.altura || raw.Height || '',
+    gender: raw.gender || raw.sex || raw.genero || raw.Gender || 'Male',
+    category: (raw.category || raw.categoria || raw.category_current || raw.Category || 'HYPERT').toUpperCase(),
+    trainer: raw.trainer || raw.assigned_coach || raw.coach || raw.Trainer || '',
+    goal: raw.goal || raw.goal_primary || raw.objetivo || '',
+    membership: raw.membership || raw.membership_type || raw.Membership || 'Premium',
+    notes: raw.notes || raw.Notes || '',
+    status: raw.status || raw.Status || 'active',
+  };
+}
+function emptyClient(){return{client_id:mkId('CL'),name:'',age:'',height_cm:'',gender:'Male',category:'HYPERT',trainer:'',goal:'',membership:'Premium',notes:'',status:'active'};}
+
+function emptyAssessment(client){return{
+  assessment_id:mkId('AS'),client_id:client.client_id,
+  assessment_date:new Date().toISOString().slice(0,10),
+  assessment_type:'Initial BBP',coach:client.trainer||'',
+  category_suggested:client.category||'HYPERT',
+  category_final:client.category||'HYPERT',
+  status:'draft',is_draft:true,
+  // 1. Vitals
+  vitals:{resting_hr_bpm:'',systolic:'',diastolic:'',bp_classification:''},
+  // 2. Body Composition (Evolt)
+  body:{weight_kg:'',lean_mass_kg:'',skeletal_muscle_kg:'',body_fat_pct:'',body_fat_mass_kg:'',subcutaneous_fat_kg:'',visceral_fat_level:'',visceral_fat_area_cm2:'',visceral_fat_mass_kg:'',bio_age:'',bwi_score:'',bmr_kcal:'',tee_kcal:'',total_water_kg:'',protein_kg:'',mineral_kg:'',abdominal_circ_cm:'',waist_hip_ratio:''},
+  // Segmental
+  segmental:{left_arm:{lean:'',fat:'',pct:'',state:'Normal'},right_arm:{lean:'',fat:'',pct:'',state:'Normal'},trunk:{lean:'',fat:'',pct:'',state:'Normal'},left_leg:{lean:'',fat:'',pct:'',state:'Normal'},right_leg:{lean:'',fat:'',pct:'',state:'Normal'}},
+  balance_ul:'',balance_lr:'',
+  // 3. Yogger
+  mobility:{movement_score:'',stability_score:'',mobility_score:'',asymmetry_index:'',
+    tests:{overhead_squat:{score:'',notes:''},single_leg_squat:{score:'',notes:''},forward_lunge:{score:'',score_l:'',score_r:'',asym:'',notes:''},standing_flexion:{score:'',notes:''}}},
+  // 4. Calibre VO2max
+  vo2:{protocol:'',duration_s:'',peak_hr_bpm:'',avg_hr_bpm:'',peak_vo2_ml_kg:'',avg_vo2_ml_kg:'',peak_vo2_L:'',avg_vo2_L:'',peak_vco2:'',avg_vco2:'',peak_rer:'',avg_rer:'',peak_ve:'',avg_ve:'',peak_bf:'',peak_vt:'',peak_mets:'',calories:'',vo2max_calibre:'',vo2max_estimated:'',vo2max_source:'device',vo2max_final:''},
+  // 5. Strength Tests (3x per hand)
+  strength:{grip_Ll1:'',grip_Ll2:'',grip_Ll3:'',grip_Rl1:'',grip_Rl2:'',grip_Rl3:'',grip_L_avg:null,grip_R_avg:null,grip_total_avg:null,grip_asym_pct:null,grip_classification:''},
+  // 6. Endurance / Balance
+  functional:{pushup_reps:'',pushup_quality:'',balance_required:Number(client.age||0)>=60,balance_l_sec:'',balance_r_sec:'',balance_score:'',balance_notes:''},
+  // 7. Targets
+  targets:{target_date:'',target_bf_pct:'',target_muscle_kg:'',target_bio_age:'',target_vo2:'',target_hr:'',target_bp:'',target_grip:'',target_pushups:'',progression_type:'Horizontal',strategy_notes:''},
+  // Direction
+  direction:{diagnosis:'',gap:'',strategy:'',recommendation:''},
+};}
+
+// ─── API ───────────────────────────────────────────
+async function apiCall(action,extra={}){
+  const url=localStorage.getItem("teva_api_url")||BACKEND_URL;
+  if(!url){console.log('[TEVA Demo]',action,extra);return{ok:true,demo:true,clients:[],assessments:[]};}
+  try{
+    const r=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action,...extra})});
+    const t=await r.text();let d={};try{d=JSON.parse(t);}catch(e){d={ok:false,raw:t};}
+    return d;
+  }catch(e){console.log('[TEVA Fallback]',e.message);return{ok:false,error:e.message};}
+}
+
+// ─── TEVA DIRECTION ENGINE (Español) ───────────────
+function buildDirection(client,current,previous,interps){
+  if(!client||!current)return null;
+  const cat=current.category_final||client.category||'HYPERT';
+  const neg=interps.filter(i=>i.tone==='negative');
+  const pos=interps.filter(i=>i.tone==='positive');
+  let dx='',gap='',strategy=cat,rec='';
+  if(cat==='BURNT'){
+    dx=neg.length?`La principal limitante actual está en ${neg[0].label.toLowerCase()}, afectando la eficiencia metabólica y dirección de pérdida de grasa.`:`La dirección es favorable: señales positivas para el objetivo BURNT.`;
+    gap=neg.length?`Antes de acelerar, corregir ${neg[0].label.toLowerCase()} y mejorar la consistencia fisiológica.`:`Consolidar progreso sin perder eficiencia de movimiento ni regulación.`;
+    rec=neg.length?`Ajustar carga aeróbica, adherencia nutricional y control de recuperación.`:`Mantener bloque BURNT, progresar de forma conservadora.`;
+  }else if(cat==='RESET'){
+    dx=neg.length?`La limitante está en ${neg[0].label.toLowerCase()}, indicando regulación sistémica inestable.`:`Señales favorables de regulación y estabilidad fisiológica.`;
+    gap=neg.length?`Estabilizar regulación y reducir estrés fisiológico antes de aumentar demanda.`:`Sostener recuperación y convertirla en capacidad funcional.`;
+    rec=neg.length?`Priorizar recuperación, control autonómico y dosificación de carga semanal.`:`Mantener estrategia RESET y progresar hacia tolerancia funcional.`;
+  }else{
+    dx=neg.length?`La limitante en ${neg[0].label.toLowerCase()} está frenando la transferencia hacia fuerza y rendimiento.`:`El sistema muestra progreso útil para HYPERT.`;
+    gap=neg.length?`Corregir ${neg[0].label.toLowerCase()} y ordenar la eficiencia del sistema antes de elevar carga.`:`Consolidar fuerza útil, simetría y transferencia.`;
+    rec=neg.length?`Progresión estructurada, corregir debilidad detectada y vigilar recuperación.`:`Continuar progresión HYPERT con monitoreo de fuerza, composición y soporte aeróbico.`;
+  }
+  return{diagnosis:dx,gap,strategy,recommendation:rec,positives:pos,negatives:neg};
+}
+
+function buildInterpretations(client,current,previous){
+  if(!current||!previous)return[];
+  const cat=current.category_final||client.category||'HYPERT';
+  const items=[];
+  const add=(label,c,p,inv,pos,neg)=>{const cv=Number(c),pv=Number(p);if(!Number.isFinite(cv)||!Number.isFinite(pv)||pv===0)return;const d=+(cv-pv).toFixed(1),pct=+((d/pv)*100).toFixed(1),ok=inv?d<0:d>0;items.push({label,current:cv,previous:pv,delta:d,pct,tone:ok?'positive':'negative',text:ok?pos({delta:d,pct}):neg({delta:d,pct})});};
+  if(cat==='BURNT'){
+    add('VO₂ Max',current.vo2?.vo2max_final||current.vo2?.vo2max_estimated,previous.vo2?.vo2max_final||previous.vo2?.vo2max_estimated,false,m=>`VO₂max ↑ ${Math.abs(m.pct)}% → adaptación aeróbica positiva.`,m=>`VO₂max ↓ ${Math.abs(m.pct)}% → revisar carga, recuperación o adherencia.`);
+    add('Body Fat %',current.body?.body_fat_pct,previous.body?.body_fat_pct,true,m=>`Body Fat ↓ ${Math.abs(m.pct)}% → dirección favorable para BURNT.`,m=>`Body Fat ↑ ${Math.abs(m.pct)}% → ajustar gasto, nutrición o consistencia.`);
+    add('Resting HR',current.vitals?.resting_hr_bpm,previous.vitals?.resting_hr_bpm,true,m=>`Resting HR ↓ ${Math.abs(m.pct)}% → mejor regulación fisiológica.`,m=>`Resting HR ↑ ${Math.abs(m.pct)}% → posible fatiga o estrés acumulado.`);
+  }else{
+    add('Skeletal Muscle',current.body?.skeletal_muscle_kg,previous.body?.skeletal_muscle_kg,false,m=>`Músculo ↑ ${Math.abs(m.pct)}% → progreso estructural positivo.`,m=>`Músculo ↓ ${Math.abs(m.pct)}% → revisar estímulo, energía o recuperación.`);
+    add('Grip Total',current.strength?.grip_total_avg,previous.strength?.grip_total_avg,false,m=>`Grip ↑ ${Math.abs(m.pct)}% → mejor expresión neuromuscular.`,m=>`Grip ↓ ${Math.abs(m.pct)}% → posible fatiga residual.`);
+    add('VO₂ Max',current.vo2?.vo2max_final||current.vo2?.vo2max_estimated,previous.vo2?.vo2max_final||previous.vo2?.vo2max_estimated,false,m=>`VO₂max ↑ ${Math.abs(m.pct)}% → soporte energético más sólido.`,m=>`VO₂max ↓ ${Math.abs(m.pct)}% → vigilar recuperación.`);
+    add('Movement Score',current.mobility?.movement_score,previous.mobility?.movement_score,false,m=>`Movement ↑ ${Math.abs(m.pct)}% → mejor calidad de movimiento.`,m=>`Movement ↓ ${Math.abs(m.pct)}% → revisar control o asimetrías.`);
+  }
+  return items;
+}
+
+function getHeroMetrics(client,assessment){
+  const cat=assessment.category_final||client.category||'HYPERT';
+  if(cat==='BURNT')return[{label:'Biological Age',value:safe(assessment.body?.bio_age),note:'Estado sistémico vs edad'},{label:'VO₂ Max',value:safe(assessment.vo2?.vo2max_final||assessment.vo2?.vo2max_estimated),note:'Eficiencia energética'},{label:'Resting HR',value:safe(assessment.vitals?.resting_hr_bpm),note:'Estrés fisiológico'}];
+  if(cat==='RESET')return[{label:'Biological Age',value:safe(assessment.body?.bio_age),note:'Métrica principal'},{label:'Resting HR',value:safe(assessment.vitals?.resting_hr_bpm),note:'Regulación autonómica'},{label:'Blood Pressure',value:`${assessment.vitals?.systolic||'—'}/${assessment.vitals?.diastolic||'—'}`,note:'Estrés sistémico'}];
+  return[{label:'Skeletal Muscle',value:safe(assessment.body?.skeletal_muscle_kg),note:'Base del argumento'},{label:'Hand Grip',value:safe(assessment.strength?.grip_total_avg),note:'Capacidad neuromuscular'},{label:'Asymmetry',value:Number.isFinite(Number(assessment.strength?.grip_asym_pct))?`${assessment.strength.grip_asym_pct}%`:'—',note:'Justifica personalización'}];
+}
+
+// ─── SHARED COMPONENTS ─────────────────────────────
+function Field({label,value,onChange,type='text',as='input',options=[],unit}){
+  return <div className="field">
+    <div className="flabel">{label}{unit&&<span style={{color:'var(--soft)',fontWeight:400,marginLeft:4}}>({unit})</span>}</div>
+    {as==='select'?<select className="sel" value={value||''} onChange={e=>onChange(e.target.value)}>{options.map(o=><option key={o} value={o}>{o}</option>)}</select>
+    :as==='textarea'?<textarea className="ta" value={value||''} onChange={e=>onChange(e.target.value)}/>
+    :<input className="inp" type={type} value={value||''} onChange={e=>onChange(e.target.value)} step={type==='number'?'0.1':undefined}/>}
+  </div>;
+}
+
+function MobilityRadar({assessment}){
+  const cx=230,cy=200,r=145;
+  const axes=[
+    {label:'Stand. Flex',angle:-Math.PI/2,value:Math.min(1,Math.max(.1,(Number(assessment.mobility?.tests?.standing_flexion?.score)||0)/100))},
+    {label:'SLS',angle:-Math.PI/2+Math.PI*2/5,value:Math.min(1,Math.max(.1,(Number(assessment.mobility?.tests?.single_leg_squat?.score)||0)/100))},
+    {label:'Movement',angle:-Math.PI/2+Math.PI*4/5,value:Math.min(1,Math.max(.1,(Number(assessment.mobility?.movement_score)||0)/100))},
+    {label:'Lunge',angle:-Math.PI/2+Math.PI*6/5,value:Math.min(1,Math.max(.1,(Number(assessment.mobility?.tests?.forward_lunge?.score)||0)/100))},
+    {label:'OHS',angle:-Math.PI/2+Math.PI*8/5,value:Math.min(1,Math.max(.1,(Number(assessment.mobility?.tests?.overhead_squat?.score)||0)/100))},
+  ];
+  const pts=axes.map(a=>`${cx+Math.cos(a.angle)*r*a.value},${cy+Math.sin(a.angle)*r*a.value}`).join(' ');
+  return <svg width="480" height="440" viewBox="0 0 480 440">
+    {[1,.8,.6,.4,.2].map((ring,i)=><polygon key={i} points={axes.map(a=>`${cx+Math.cos(a.angle)*r*ring},${cy+Math.sin(a.angle)*r*ring}`).join(' ')} fill="none" stroke="rgba(255,255,255,.08)"/>)}
+    {axes.map((a,i)=><line key={i} x1={cx} y1={cy} x2={cx+Math.cos(a.angle)*r} y2={cy+Math.sin(a.angle)*r} stroke="rgba(255,255,255,.08)"/>)}
+    {/* Silhouette */}
+    <g fill="rgba(187,196,212,.13)" stroke="rgba(255,255,255,.04)" strokeWidth="1.5">
+      <circle cx="230" cy="58" r="24"/>
+      <path d="M209 84 C195 96,190 120,195 140 L205 196 C207 208,215 216,224 220 L236 220 C245 216,253 208,255 196 L265 140 C270 120,265 96,251 84 Z"/>
+      <path d="M203 108 L174 185 C168 200,173 213,185 219 L199 223 L211 168 Z"/>
+      <path d="M257 108 L286 185 C292 200,287 213,275 219 L261 223 L249 168 Z"/>
+      <path d="M215 220 L204 308 C202 325,207 340,219 348 L226 351 L230 348 L234 351 L241 348 C253 340,258 325,256 308 L245 220 Z"/>
+      <path d="M204 308 L194 406 C193 413,198 419,205 419 L213 419 L218 352 Z"/>
+      <path d="M256 308 L266 406 C267 413,262 419,255 419 L247 419 L242 352 Z"/>
+    </g>
+    <polygon points={pts} fill="rgba(116,122,78,.5)" stroke="rgba(179,184,151,.9)" strokeWidth="3"/>
+    {axes.map((a,i)=>{const tx=cx+Math.cos(a.angle)*(r+44);const ty=cy+Math.sin(a.angle)*(r+44);return <g key={i}>
+      <text x={tx} y={ty-4} fill="#eef0f5" fontSize="14" fontWeight="700" textAnchor="middle">{a.label}</text>
+      <text x={tx} y={ty+16} fill="#6ac18a" fontSize="13" textAnchor="middle">{Math.round(a.value*100)}%</text>
+    </g>;})}
+  </svg>;
+}
+
+// ─── MAIN APP ──────────────────────────────────────
+function App(){
+  const[db,setDb]=useState({clients:[],assessments:[]});
+  const[loading,setLoading]=useState(true);
+  const[status,setStatus]=useState('Iniciando...');
+  const[route,setRoute]=useState(window.location.hash.replace('#','')||'/hub');
+  const[search,setSearch]=useState('');
+  const[clientId,setClientId]=useState('');
+  const[assessId,setAssessId]=useState('');
+  const[clientForm,setClientForm]=useState(emptyClient());
+  const[assessForm,setAssessForm]=useState(null);
+  const[entryTab,setEntryTab]=useState('vitals');
+  const[spot,setSpot]=useState('trunk');
+  const[saving,setSaving]=useState('');
+  const trendRef=useRef(null);
+  const compareRef=useRef(null);
+
+  // ── Navigation ──
+  useEffect(()=>{
+    const onHash=()=>setRoute(window.location.hash.replace('#','')||'/hub');
+    window.addEventListener('hashchange',onHash);
+    if(!window.location.hash)window.location.hash='/hub';
+    return()=>window.removeEventListener('hashchange',onHash);
+  },[]);
+
+  // ── Load data ──
+  useEffect(()=>{loadData();},[]);
+
+  async function loadData(){
+    setLoading(true);setStatus('Conectando a Sheets...');
+    const url=localStorage.getItem("teva_api_url");
+    if(!url){
+      // Load demo data
+      setDb({clients:[
+        {client_id:'ADAM001',name:'Adam',age:'38',height_cm:'173',gender:'Male',category:'HYPERT',trainer:'Coach A',goal:'',membership:'Premium',notes:'',status:'active'},
+        {client_id:'HENR001',name:'Henrikke',age:'37',height_cm:'164',gender:'Female',category:'BURNT',trainer:'Coach B',goal:'',membership:'Premium',notes:'',status:'active'},
+        {client_id:'NOE001',name:'Noé',age:'39',height_cm:'174',gender:'Male',category:'HYPERT',trainer:'Coach A',goal:'',membership:'Premium',notes:'',status:'active'},
+      ],assessments:[]});
+      setStatus('Modo demo. Configura tu Apps Script URL en el sidebar.');
+      setLoading(false);return;
+    }
+    try{
+      const d=await apiCall('getOverview');
+      if(d.ok&&d.clients){
+        setDb({clients:(d.clients||[]).map(normalizeClient),assessments:d.assessments||[]});
+        setStatus(`Backend conectado · ${(d.clients||[]).length} clientes`);
+      }else{setStatus('Respuesta inválida del backend.');}
+    }catch(e){setStatus('Error al conectar. Revisa la URL.');}
+    setLoading(false);
+  }
+
+  // ── Derived state ──
+  const activeClients=useMemo(()=>db.clients.filter(c=>c.status!=='archived'),[db.clients]);
+  const filteredClients=useMemo(()=>{const q=search.trim().toLowerCase();return q?activeClients.filter(c=>(c.name||'').toLowerCase().includes(q)||(c.trainer||'').toLowerCase().includes(q)):activeClients;},[activeClients,search]);
+  const selectedClient=useMemo(()=>db.clients.find(c=>c.client_id===clientId)||filteredClients[0]||null,[db.clients,clientId,filteredClients]);
+  useEffect(()=>{if(selectedClient&&selectedClient.client_id!==clientId)setClientId(selectedClient.client_id);},[selectedClient?.client_id]);
+  useEffect(()=>{if(selectedClient)setClientForm(clone(selectedClient));},[selectedClient?.client_id]);
+  const clientAssessments=useMemo(()=>selectedClient?db.assessments.filter(a=>a.client_id===selectedClient.client_id&&!a.is_archived).sort((a,b)=>new Date(a.assessment_date)-new Date(b.assessment_date)):[],[db.assessments,selectedClient]);
+  const selectedAssessment=useMemo(()=>clientAssessments.find(a=>a.assessment_id===assessId)||clientAssessments[clientAssessments.length-1]||null,[clientAssessments,assessId]);
+  useEffect(()=>{if(clientAssessments.length&&!assessId)setAssessId(clientAssessments[clientAssessments.length-1].assessment_id);},[clientAssessments.length]);
+  const prevAssessment=useMemo(()=>{if(!selectedAssessment)return null;const idx=clientAssessments.findIndex(a=>a.assessment_id===selectedAssessment.assessment_id);return idx>0?clientAssessments[idx-1]:null;},[selectedAssessment?.assessment_id,clientAssessments]);
+  const interps=useMemo(()=>selectedClient&&selectedAssessment&&prevAssessment?buildInterpretations(selectedClient,selectedAssessment,prevAssessment):[],[selectedAssessment?.assessment_id,prevAssessment?.assessment_id]);
+  const dirAssist=useMemo(()=>selectedClient&&selectedAssessment?buildDirection(selectedClient,selectedAssessment,prevAssessment,interps):null,[selectedAssessment?.assessment_id,interps]);
+  const heroMetrics=useMemo(()=>selectedClient&&selectedAssessment?getHeroMetrics(selectedClient,selectedAssessment):[],[selectedAssessment?.assessment_id]);
+
+  // ── Assessment form helpers ──
+  function setA(path,value){setAssessForm(prev=>{const next=clone(prev);setPath(next,path,value);
+    if(path==='vitals.systolic'||path==='vitals.diastolic')next.vitals.bp_classification=classifyBP(next.vitals.systolic,next.vitals.diastolic);
+    if(path.startsWith('strength.grip_'))recalcGrip(next.strength);
+    // VO2 auto-final: if valid test, use calibre; else use estimated
+    if(path.startsWith('vo2.')){
+      const{valid}=vo2Validate(next.vo2,selectedClient?.age);
+      if(valid&&next.vo2.vo2max_calibre)next.vo2.vo2max_final=next.vo2.vo2max_calibre;
+      else if(next.vo2.vo2max_estimated)next.vo2.vo2max_final=next.vo2.vo2max_estimated;
+    }
+    return next;
+  });}
+
+  // ── CRUD ──
+  async function saveClient(){
+    if(!clientForm.name)return alert('Ingresa nombre');
+    const res=await apiCall('upsertRow',{sheet:'Clients',keyColumn:'client_id',row:clientForm});
+    if(res.ok||res.demo){setDb(prev=>({...prev,clients:prev.clients.some(c=>c.client_id===clientForm.client_id)?prev.clients.map(c=>c.client_id===clientForm.client_id?normalizeClient(clone(clientForm)):c):[normalizeClient(clone(clientForm)),...prev.clients]}));setClientId(clientForm.client_id);setStatus('Cliente guardado.');}
+  }
+
+  async function startNewAssessment(){
+    if(!selectedClient)return;
+    const next=emptyAssessment(selectedClient);
+    next.assessment_type=clientAssessments.filter(a=>!a.is_archived).length?'Follow-up':'Initial BBP';
+    setAssessForm(next);setAssessId(next.assessment_id);setEntryTab('vitals');
+    await apiCall('batchUpsertRows',{rows:flattenRows(next),assessment_id:next.assessment_id});
+    setDb(prev=>({...prev,assessments:[...prev.assessments,next]}));
+    setStatus('Nueva evaluación creada.');window.location.hash='/entry';
+  }
+
+  function flattenRows(a){
+    return[
+      {sheet:'Vital_Signs',values:{client_id:a.client_id,assessment_date:a.assessment_date,...a.vitals}},
+      {sheet:'Evolt_Scans',values:{client_id:a.client_id,scan_date:a.assessment_date,...a.body,...Object.fromEntries(Object.entries(a.segmental).flatMap(([zone,v])=>Object.entries(v).map(([f,val])=>[`seg_${zone}_${f}`,val]))),balance_upper_lower:a.balance_ul,balance_left_right:a.balance_lr}},
+      {sheet:'Yogger_Assessments',values:{client_id:a.client_id,assessment_date:a.assessment_date,...a.mobility,...Object.fromEntries(Object.entries(a.mobility.tests).flatMap(([test,v])=>Object.entries(v).map(([f,val])=>[`${test}_${f}`,val])))}},
+      {sheet:'Calibre_VO2',values:{client_id:a.client_id,test_date:a.assessment_date,...a.vo2}},
+      {sheet:'Strength_Tests',values:{client_id:a.client_id,assessment_date:a.assessment_date,...a.strength}},
+      {sheet:'Endurance_Balance',values:{client_id:a.client_id,assessment_date:a.assessment_date,...a.functional}},
+      {sheet:'Client_Targets',values:{client_id:a.client_id,category:a.category_final,...a.targets}},
+      {sheet:'Direction',values:{client_id:a.client_id,assessment_date:a.assessment_date,...a.direction}},
+    ];
+  }
+
+  async function saveBlock(block){
+    if(!assessForm)return;setSaving(block);
+    const next=clone(assessForm);next.updated_at=new Date().toISOString();
+    await apiCall('batchUpsertRows',{rows:flattenRows(next),assessment_id:next.assessment_id});
+    setDb(prev=>({...prev,assessments:prev.assessments.some(a=>a.assessment_id===next.assessment_id)?prev.assessments.map(a=>a.assessment_id===next.assessment_id?next:a):[...prev.assessments,next]}));
+    setAssessForm(next);setStatus(`Bloque guardado.`);setSaving('');
+  }
+
+  async function finalizeAssessment(){
+    if(!assessForm)return;const next=clone(assessForm);next.status='completed';next.is_draft=false;
+    await apiCall('batchUpsertRows',{rows:flattenRows(next),assessment_id:next.assessment_id});
+    setDb(prev=>({...prev,assessments:prev.assessments.map(a=>a.assessment_id===next.assessment_id?next:a)}));
+    setAssessForm(next);setStatus('Evaluación completada.');window.location.hash='/review';
+  }
+
+  // ── Plotly charts ──
+  useEffect(()=>{
+    if(!selectedAssessment||route!=='/review')return;
+    const c=selectedAssessment,p=prevAssessment,cat=c.category_final||selectedClient?.category||'HYPERT';
+    if(trendRef.current){
+      const traces=cat==='BURNT'?[
+        {x:[p?.assessment_date,c.assessment_date].filter(Boolean),y:[p?.body?.bio_age,c.body?.bio_age].filter(v=>v!==undefined&&v!==''),type:'scatter',mode:'lines+markers',name:'Bio Age',line:{shape:'spline',width:3,color:'#C0392B'},fill:'tozeroy',fillcolor:'rgba(192,57,43,0.1)'},
+        {x:[p?.assessment_date,c.assessment_date].filter(Boolean),y:[p?.vo2?.vo2max_final||p?.vo2?.vo2max_estimated,c.vo2?.vo2max_final||c.vo2?.vo2max_estimated].filter(v=>v!==undefined&&v!==''),type:'scatter',mode:'lines+markers',name:'VO₂max',line:{shape:'spline',width:3,color:'#D4901A'},fill:'tozeroy',fillcolor:'rgba(212,144,26,0.1)'},
+        {x:[p?.assessment_date,c.assessment_date].filter(Boolean),y:[p?.body?.body_fat_pct,c.body?.body_fat_pct].filter(v=>v!==undefined&&v!==''),type:'scatter',mode:'lines+markers',name:'Body Fat %',line:{shape:'spline',width:3,color:'#C4A566'},fill:'tozeroy',fillcolor:'rgba(196,165,102,0.1)'},
+      ]:[
+        {x:[p?.assessment_date,c.assessment_date].filter(Boolean),y:[p?.body?.skeletal_muscle_kg,c.body?.skeletal_muscle_kg].filter(v=>v!==undefined&&v!==''),type:'scatter',mode:'lines+markers',name:'Skeletal Muscle',line:{shape:'spline',width:3,color:'#747A4E'},fill:'tozeroy',fillcolor:'rgba(116,122,78,0.1)'},
+        {x:[p?.assessment_date,c.assessment_date].filter(Boolean),y:[p?.strength?.grip_total_avg,c.strength?.grip_total_avg].filter(v=>v!==undefined&&v!=''),type:'scatter',mode:'lines+markers',name:'Grip Total',line:{shape:'spline',width:3,color:'#2D7A5E'},fill:'tozeroy',fillcolor:'rgba(45,122,94,0.1)'},
+        {x:[p?.assessment_date,c.assessment_date].filter(Boolean),y:[p?.vo2?.vo2max_final||p?.vo2?.vo2max_estimated,c.vo2?.vo2max_final||c.vo2?.vo2max_estimated].filter(v=>v!==undefined&&v!==''),type:'scatter',mode:'lines+markers',name:'VO₂max',line:{shape:'spline',width:3,color:'#C4A566'},fill:'tozeroy',fillcolor:'rgba(196,165,102,0.1)'},
+      ];
+      Plotly.newPlot(trendRef.current,traces,{paper_bgcolor:'transparent',plot_bgcolor:'transparent',font:{color:'#d6dce6',family:'Montserrat'},margin:{l:40,r:12,t:12,b:40},xaxis:{color:'#8c94a3',gridcolor:'rgba(255,255,255,.07)'},yaxis:{color:'#8c94a3',gridcolor:'rgba(255,255,255,.07)'},legend:{orientation:'h',y:1.12}},{displayModeBar:false,responsive:true});
+    }
+    if(compareRef.current&&prevAssessment){
+      const cat2=selectedAssessment.category_final||selectedClient?.category||'HYPERT';
+      const mets=cat2==='BURNT'?[{l:'Bio Age',c:safe(c.body?.bio_age,0),p:safe(p?.body?.bio_age,0)},{l:'VO₂ Max',c:safe(c.vo2?.vo2max_final||c.vo2?.vo2max_estimated,0),p:safe(p?.vo2?.vo2max_final||p?.vo2?.vo2max_estimated,0)},{l:'Body Fat %',c:safe(c.body?.body_fat_pct,0),p:safe(p?.body?.body_fat_pct,0)},{l:'Resting HR',c:safe(c.vitals?.resting_hr_bpm,0),p:safe(p?.vitals?.resting_hr_bpm,0)}]:[{l:'Skeletal Muscle',c:safe(c.body?.skeletal_muscle_kg,0),p:safe(p?.body?.skeletal_muscle_kg,0)},{l:'Grip Total',c:safe(c.strength?.grip_total_avg,0),p:safe(p?.strength?.grip_total_avg,0)},{l:'VO₂ Max',c:safe(c.vo2?.vo2max_final||c.vo2?.vo2max_estimated,0),p:safe(p?.vo2?.vo2max_final||p?.vo2?.vo2max_estimated,0)},{l:'Body Fat %',c:safe(c.body?.body_fat_pct,0),p:safe(p?.body?.body_fat_pct,0)}];
+      Plotly.newPlot(compareRef.current,[{type:'bar',x:mets.map(m=>m.l),y:mets.map(m=>m.p),name:'Previous',opacity:.65,marker:{color:'rgba(255,255,255,.2)'}},{type:'bar',x:mets.map(m=>m.l),y:mets.map(m=>m.c),name:'Current',opacity:.95,marker:{color:CAT_COL[cat2]}}],{barmode:'group',paper_bgcolor:'transparent',plot_bgcolor:'transparent',font:{color:'#d6dce6',family:'Montserrat'},margin:{l:40,r:12,t:12,b:50},xaxis:{color:'#8c94a3',gridcolor:'rgba(255,255,255,.07)'},yaxis:{color:'#8c94a3',gridcolor:'rgba(255,255,255,.07)'},legend:{orientation:'h',y:1.12}},{displayModeBar:false,responsive:true});
+    }
+  },[selectedAssessment?.assessment_id,prevAssessment?.assessment_id,route]);
+
+  // ── VO2 validation display ──
+  const vo2Valid=assessForm?vo2Validate(assessForm.vo2,selectedClient?.age):null;
+
+  if(loading)return <div className="app"><div className="loading"><div style={{width:32,height:32,border:'3px solid rgba(116,122,78,0.2)',borderTop:'3px solid #747A4E',borderRadius:'50%',animation:'spin 1s linear infinite',margin:'0 auto 12px'}}/>Cargando sistema TEVA...</div></div>;
+
+  // ─────────────────────────────────────────────────
+  return <div className="app">
+    {/* TOPBAR */}
+    <div className="topbar no-print">
+      <div className="brand">
+        <div className="mark">T</div>
+        <div><h1>TEVA System</h1><p>Hub · Entry · Review — conectado a Google Sheets</p></div>
+      </div>
+      <div className="actions">
+        <div className={status.includes('Error')||status.includes('inválida')?'small status-bad':'small status-ok'}>{status}</div>
+        <button className="btn" onClick={loadData}>↻ Refresh</button>
+        <button className="btn primary" onClick={()=>window.print()}>↓ PDF</button>
+        <button onClick={()=>{const u=prompt('Apps Script URL:',localStorage.getItem('teva_api_url')||'');if(u!==null){if(u){localStorage.setItem('teva_api_url',u);}else{localStorage.removeItem('teva_api_url');}loadData();}}} style={{background:'rgba(255,255,255,.06)',border:'1px solid var(--line)',borderRadius:10,padding:'6px 10px',color:'var(--soft)',cursor:'pointer',fontSize:11}}>⚙ URL</button>
+      </div>
+    </div>
+
+    {/* TABS */}
+    <div className="tabbar no-print" style={{marginBottom:16}}>
+      {[['/hub','Hub'],['/entry','Entry'],['/review','Review']].map(([r,l])=><button key={r} className={`tab ${route===r?'active':''}`} onClick={()=>window.location.hash=r}>{l}</button>)}
+    </div>
+
+    <div className="layout">
+      {/* SIDEBAR */}
+      <div className="card no-print" style={{height:'fit-content',position:'sticky',top:20}}>
+        <div className="card-head"><h3>Clientes</h3><span className="small">{filteredClients.length} activos</span></div>
+        <div className="card-body" style={{display:'flex',flexDirection:'column',gap:10}}>
+          <input className="search" placeholder="Buscar..." value={search} onChange={e=>setSearch(e.target.value)}/>
+          <select className="sel" value={clientId} onChange={e=>setClientId(e.target.value)}>
+            {filteredClients.map(c=><option key={c.client_id} value={c.client_id}>{c.name}</option>)}
+          </select>
+          {selectedClient&&<div className="arow active">
+            <div className="status-row" style={{justifyContent:'space-between'}}>
+              <strong style={{fontSize:14,fontFamily:"'Playfair Display',serif"}}>{selectedClient.name}</strong>
+              <span className={`badge ${String(selectedClient.category).toLowerCase()}`}>{selectedClient.category}</span>
+            </div>
+            <div className="small" style={{marginTop:4}}>{selectedClient.trainer} · {selectedClient.age}y · {selectedClient.height_cm}cm</div>
+            <div className="status-row" style={{marginTop:8}}>
+              <span className="pill">{selectedClient.membership||'Premium'}</span>
+              <span className="pill">{clientAssessments.length} sesiones</span>
+            </div>
+          </div>}
+          <div className="actions" style={{marginTop:4}}>
+            <button className="btn primary" onClick={startNewAssessment}>+ Nueva evaluación</button>
+            <button className="btn" onClick={()=>{window.location.hash='/hub';}}>Hub</button>
+          </div>
+          {clientAssessments.length>0&&<div>
+            <div className="flabel" style={{marginBottom:6}}>Historial</div>
+            <select className="sel" value={assessId} onChange={e=>{setAssessId(e.target.value);const a=clientAssessments.find(x=>x.assessment_id===e.target.value);if(a)setAssessForm(clone(a));}}>
+              {[...clientAssessments].reverse().map(a=><option key={a.assessment_id} value={a.assessment_id}>{fmt(a.assessment_date)} · {a.assessment_type} {a.is_draft?'(draft)':''}</option>)}
+            </select>
+          </div>}
+        </div>
+      </div>
+
+      {/* MAIN CONTENT */}
+      <div className="content">
+
+        {/* ═══ HUB ═══ */}
+        {route==='/hub'&&selectedClient&&<>
+          <div className="hero">
+            <div className="card hero-copy fade-up">
+              <div className="eyebrow">TEVA Client Hub</div>
+              <h2>{selectedClient.name}</h2>
+              <p>Edita el perfil del cliente, inicia una nueva evaluación o abre cualquier sesión del historial para revisarla o presentarla en el Review.</p>
+              <div className="hero-meta">
+                {[['Coach',selectedClient.trainer||'—'],['Edad',selectedClient.age||'—'],['Altura',selectedClient.height_cm?`${selectedClient.height_cm}cm`:'—'],['Categoría',selectedClient.category]].map(([k,v])=><div key={k} className="mini"><div className="k">{k}</div><div className="v">{v}</div></div>)}
+              </div>
+            </div>
+            <div className="card fade-up">
+              <div className="card-head"><h3>Acciones rápidas</h3></div>
+              <div className="card-body" style={{display:'flex',flexDirection:'column',gap:10}}>
+                <button className="btn primary" onClick={startNewAssessment}>Nueva evaluación</button>
+                <button className="btn" onClick={()=>{if(selectedAssessment){setAssessForm(clone(selectedAssessment));window.location.hash='/entry';}}}>Editar última evaluación</button>
+                <button className="btn" onClick={()=>window.location.hash='/review'}>Abrir Review</button>
+              </div>
+            </div>
+          </div>
+          <div className="g2 fade-up">
+            {/* Client editor */}
+            <div className="card">
+              <div className="card-head"><h3>Editar cliente</h3></div>
+              <div className="card-body" style={{display:'flex',flexDirection:'column',gap:10}}>
+                <div className="fg2">
+                  <Field label="Nombre completo" value={clientForm.name} onChange={v=>setClientForm(p=>({...p,name:v}))}/>
+                  <Field label="Edad" value={clientForm.age} onChange={v=>setClientForm(p=>({...p,age:v}))} type="number"/>
+                  <Field label="Género" value={clientForm.gender} onChange={v=>setClientForm(p=>({...p,gender:v}))} as="select" options={['Male','Female']}/>
+                  <Field label="Altura" value={clientForm.height_cm} onChange={v=>setClientForm(p=>({...p,height_cm:v}))} type="number" unit="cm"/>
+                  <Field label="Trainer asignado" value={clientForm.trainer} onChange={v=>setClientForm(p=>({...p,trainer:v}))}/>
+                  <Field label="Categoría" value={clientForm.category} onChange={v=>setClientForm(p=>({...p,category:v}))} as="select" options={['BURNT','HYPERT','RESET']}/>
+                  <Field label="Membresía" value={clientForm.membership} onChange={v=>setClientForm(p=>({...p,membership:v}))} as="select" options={['Premium','Standard','Trial']}/>
+                  <Field label="Objetivo principal" value={clientForm.goal} onChange={v=>setClientForm(p=>({...p,goal:v}))}/>
+                </div>
+                <Field label="Notas" value={clientForm.notes} onChange={v=>setClientForm(p=>({...p,notes:v}))} as="textarea"/>
+                <div className="footer-actions">
+                  <button className="btn" onClick={()=>setClientForm(emptyClient())}>Nuevo cliente</button>
+                  <button className="btn primary" onClick={saveClient}>Guardar</button>
+                </div>
+              </div>
+            </div>
+            {/* Assessment history */}
+            <div className="card">
+              <div className="card-head"><h3>Historial de evaluaciones</h3><span className="small">{clientAssessments.length} sesiones</span></div>
+              <div className="card-body">
+                {!clientAssessments.length?<div className="empty">Sin evaluaciones aún.</div>
+                :<div className="alist">{[...clientAssessments].reverse().map(a=><div key={a.assessment_id} className={`arow ${assessId===a.assessment_id?'active':''}`} onClick={()=>{setAssessId(a.assessment_id);setAssessForm(clone(a));}}>
+                  <div className="status-row" style={{justifyContent:'space-between'}}><strong>{a.assessment_type}</strong><span className={`badge ${String(a.category_final||'HYPERT').toLowerCase()}`}>{a.category_final}</span></div>
+                  <div className="small">{fmt(a.assessment_date)} · {a.status}{a.is_draft?' · draft':''}</div>
+                  <div className="footer-actions" style={{marginTop:8}}>
+                    <button className="btn" onClick={e=>{e.stopPropagation();setAssessForm(clone(a));window.location.hash='/entry';}}>Editar</button>
+                    <button className="btn" onClick={e=>{e.stopPropagation();setAssessId(a.assessment_id);window.location.hash='/review';}}>Review</button>
+                  </div>
+                </div>)}</div>}
+              </div>
+            </div>
+          </div>
+        </>}
+
+        {/* ═══ ENTRY ═══ */}
+        {route==='/entry'&&selectedClient&&assessForm&&<>
+          <div className="card fade-up hero-copy">
+            <div className="eyebrow">TEVA Entry · {assessForm.assessment_type}</div>
+            <h2>{selectedClient.name}</h2>
+            <p>Captura por bloques en el orden del Body Blueprint. Cada bloque se guarda individualmente en Google Sheets.</p>
+            <div className="hero-meta">
+              {[['Fecha',fmt(assessForm.assessment_date)],['Coach',assessForm.coach||'—'],['Tipo',assessForm.assessment_type],['Estado',assessForm.status]].map(([k,v])=><div key={k} className="mini"><div className="k">{k}</div><div className="v">{v}</div></div>)}
+            </div>
+          </div>
+          <div className="card fade-up">
+            <div className="card-head"><h3>Secciones</h3><span className="small">Body Blueprint flow</span></div>
+            <div className="card-body">
+              <div className="subtabs" style={{marginBottom:14}}>
+                {[['vitals','1. Vitals'],['body','2. Body Comp'],['segmental','Segmental'],['mobility','3. Yogger'],['vo2','4. VO₂max'],['strength','5. Handgrip'],['functional','6. Endurance'],['targets','7. Targets'],['direction','Direction']].map(([k,l])=><button key={k} className={`subtab ${entryTab===k?'active':''}`} onClick={()=>setEntryTab(k)}>{l}</button>)}
+              </div>
+
+              {/* 1. VITALS */}
+              {entryTab==='vitals'&&<div className="fg2">
+                <Field label="Fecha" value={assessForm.assessment_date} onChange={v=>setA('assessment_date',v)} type="date"/>
+                <Field label="Resting HR" value={assessForm.vitals.resting_hr_bpm} onChange={v=>setA('vitals.resting_hr_bpm',v)} type="number" unit="bpm"/>
+                <Field label="Sistólica" value={assessForm.vitals.systolic} onChange={v=>setA('vitals.systolic',v)} type="number" unit="mmHg"/>
+                <Field label="Diastólica" value={assessForm.vitals.diastolic} onChange={v=>setA('vitals.diastolic',v)} type="number" unit="mmHg"/>
+                {assessForm.vitals.bp_classification&&<div className={`valid-badge ${assessForm.vitals.bp_classification==='Normal'?'valid-ok':'valid-ko'}`}>BP: {assessForm.vitals.bp_classification}</div>}
+              </div>}
+
+              {/* 2. BODY COMP */}
+              {entryTab==='body'&&<div className="fg2">
+                {[['weight_kg','Peso','kg'],['skeletal_muscle_kg','Músculo esquelético','kg'],['body_fat_pct','Grasa corporal','%'],['body_fat_mass_kg','Masa grasa','kg'],['lean_mass_kg','Masa magra','kg'],['bio_age','Bio Age','años'],['bwi_score','BWI','/10'],['bmr_kcal','BMR','kcal'],['tee_kcal','TEE','kcal'],['total_water_kg','Agua total','kg'],['subcutaneous_fat_kg','Grasa subcut.','kg'],['visceral_fat_level','Grasa visceral nivel',''],['visceral_fat_area_cm2','Área visceral','cm²'],['visceral_fat_mass_kg','Masa visceral','kg'],['protein_kg','Proteína','kg'],['mineral_kg','Mineral','kg'],['abdominal_circ_cm','Circ. abd.','cm'],['waist_hip_ratio','Cintura/Cadera','']].map(([k,l,u])=><Field key={k} label={l} value={assessForm.body[k]} onChange={v=>setA(`body.${k}`,v)} type="number" unit={u}/>)}
+              </div>}
+
+              {/* SEGMENTAL */}
+              {entryTab==='segmental'&&<div>
+                <div className="seg-grid">
+                  {[['left_arm','Brazo Izq'],['right_arm','Brazo Der'],['trunk','Tronco'],['left_leg','Pierna Izq'],['right_leg','Pierna Der']].map(([zone,label])=><div key={zone} className="seg">
+                    <h5>{label}</h5>
+                    <Field label="Lean kg" value={assessForm.segmental[zone].lean} onChange={v=>setA(`segmental.${zone}.lean`,v)} type="number"/>
+                    <Field label="Fat kg" value={assessForm.segmental[zone].fat} onChange={v=>setA(`segmental.${zone}.fat`,v)} type="number"/>
+                    <Field label="% vs normal" value={assessForm.segmental[zone].pct} onChange={v=>setA(`segmental.${zone}.pct`,v)} type="number"/>
+                    <Field label="Estado" value={assessForm.segmental[zone].state} onChange={v=>setA(`segmental.${zone}.state`,v)} as="select" options={['Under','Normal','Over']}/>
+                  </div>)}
+                </div>
+                <div className="fg2" style={{marginTop:12}}>
+                  <Field label="Balance U/L" value={assessForm.balance_ul} onChange={v=>setA('balance_ul',v)} as="select" options={['Balanced','Unbalanced']}/>
+                  <Field label="Balance L/R" value={assessForm.balance_lr} onChange={v=>setA('balance_lr',v)} as="select" options={['Balanced','Unbalanced']}/>
+                </div>
+              </div>}
+
+              {/* 3. YOGGER */}
+              {entryTab==='mobility'&&<div style={{display:'flex',flexDirection:'column',gap:12}}>
+                <div className="g4">
+                  <Field label="Movement Score" value={assessForm.mobility.movement_score} onChange={v=>setA('mobility.movement_score',v)} type="number"/>
+                  <Field label="Stability Score" value={assessForm.mobility.stability_score} onChange={v=>setA('mobility.stability_score',v)} type="number"/>
+                  <Field label="Mobility Score" value={assessForm.mobility.mobility_score} onChange={v=>setA('mobility.mobility_score',v)} type="number"/>
+                  <Field label="Asymmetry Index" value={assessForm.mobility.asymmetry_index} onChange={v=>setA('mobility.asymmetry_index',v)} type="number" unit="%"/>
+                </div>
+                <div className="g2">
+                  {[['overhead_squat','Overhead Squat (OHS)'],['single_leg_squat','Single-Leg Squat (SLS)'],['forward_lunge','Forward Lunge'],['standing_flexion','Standing Flexion Trunk']].map(([k,label])=><div key={k} className="card">
+                    <div className="card-head"><h3>{label}</h3></div>
+                    <div className="card-body" style={{display:'flex',flexDirection:'column',gap:8}}>
+                      <Field label="Score" value={assessForm.mobility.tests[k]?.score||''} onChange={v=>setA(`mobility.tests.${k}.score`,v)} type="number" unit="/100"/>
+                      {k==='forward_lunge'&&<><Field label="Score Left" value={assessForm.mobility.tests[k].score_l||''} onChange={v=>setA(`mobility.tests.${k}.score_l`,v)} type="number"/><Field label="Score Right" value={assessForm.mobility.tests[k].score_r||''} onChange={v=>setA(`mobility.tests.${k}.score_r`,v)} type="number"/><Field label="Asimetría" value={assessForm.mobility.tests[k].asym||''} onChange={v=>setA(`mobility.tests.${k}.asym`,v)} type="number" unit="%"/></>}
+                      <Field label="Notas" value={assessForm.mobility.tests[k]?.notes||''} onChange={v=>setA(`mobility.tests.${k}.notes`,v)} as="textarea"/>
+                    </div>
+                  </div>)}
+                </div>
+              </div>}
+
+              {/* 4. CALIBRE VO2MAX */}
+              {entryTab==='vo2'&&<div style={{display:'flex',flexDirection:'column',gap:12}}>
+                <div className="fg2">
+                  <Field label="Protocolo" value={assessForm.vo2.protocol} onChange={v=>setA('vo2.protocol',v)}/>
+                  <Field label="Duración" value={assessForm.vo2.duration_s} onChange={v=>setA('vo2.duration_s',v)} type="number" unit="s"/>
+                  <Field label="Peak HR" value={assessForm.vo2.peak_hr_bpm} onChange={v=>setA('vo2.peak_hr_bpm',v)} type="number" unit="bpm"/>
+                  <Field label="Avg HR" value={assessForm.vo2.avg_hr_bpm} onChange={v=>setA('vo2.avg_hr_bpm',v)} type="number" unit="bpm"/>
+                  <Field label="Peak VO₂/kg" value={assessForm.vo2.peak_vo2_ml_kg} onChange={v=>setA('vo2.peak_vo2_ml_kg',v)} type="number" unit="ml/kg/min"/>
+                  <Field label="Avg VO₂/kg" value={assessForm.vo2.avg_vo2_ml_kg} onChange={v=>setA('vo2.avg_vo2_ml_kg',v)} type="number" unit="ml/kg/min"/>
+                  <Field label="Peak VO₂ abs" value={assessForm.vo2.peak_vo2_L} onChange={v=>setA('vo2.peak_vo2_L',v)} type="number" unit="L/min"/>
+                  <Field label="Peak VCO₂" value={assessForm.vo2.peak_vco2} onChange={v=>setA('vo2.peak_vco2',v)} type="number" unit="L/min"/>
+                  <Field label="Peak RER" value={assessForm.vo2.peak_rer} onChange={v=>setA('vo2.peak_rer',v)} type="number"/>
+                  <Field label="Avg RER" value={assessForm.vo2.avg_rer} onChange={v=>setA('vo2.avg_rer',v)} type="number"/>
+                  <Field label="Peak VE" value={assessForm.vo2.peak_ve} onChange={v=>setA('vo2.peak_ve',v)} type="number" unit="L/min"/>
+                  <Field label="Peak METs" value={assessForm.vo2.peak_mets} onChange={v=>setA('vo2.peak_mets',v)} type="number"/>
+                  <Field label="Calorías quemadas" value={assessForm.vo2.calories} onChange={v=>setA('vo2.calories',v)} type="number" unit="kcal"/>
+                  <Field label="VO₂max Calibre (reporte)" value={assessForm.vo2.vo2max_calibre} onChange={v=>setA('vo2.vo2max_calibre',v)} type="number" unit="ml/kg/min"/>
+                </div>
+                {/* Validation status */}
+                {vo2Valid&&<div className="diag">
+                  <div className="eyebrow">Validación de la prueba</div>
+                  <div className="status-row" style={{marginTop:8,gap:12}}>
+                    <span className={`valid-badge ${vo2Valid.rerOk?'valid-ok':'valid-ko'}`}>RER {vo2Valid.rerOk?'≥':'<'} 1.10 — {vo2Valid.rerOk?'OK':'No cumple'}</span>
+                    <span className={`valid-badge ${vo2Valid.hrOk?'valid-ok':'valid-ko'}`}>HR ≥ 85% HRmax — {vo2Valid.hrOk?'OK':'No cumple'}</span>
+                    <span className={`valid-badge ${vo2Valid.valid?'valid-ok':'valid-ko'}`}>{vo2Valid.valid?'PRUEBA VÁLIDA — usar valor Calibre':'PRUEBA INVÁLIDA — usar estimado'}</span>
+                  </div>
+                  {!vo2Valid.valid&&<div className="small" style={{marginTop:8}}>Ingresa un VO₂max estimado (Rockport, sub-máximo, o protocolo alternativo).</div>}
+                </div>}
+                <div className="fg2">
+                  <Field label="VO₂max Estimado (si inválido)" value={assessForm.vo2.vo2max_estimated} onChange={v=>setA('vo2.vo2max_estimated',v)} type="number" unit="ml/kg/min"/>
+                  <Field label="Fuente" value={assessForm.vo2.vo2max_source} onChange={v=>setA('vo2.vo2max_source',v)} as="select" options={['device','estimated','submaximal','rockport']}/>
+                </div>
+                {assessForm.vo2.vo2max_final&&<div className="metric"><div className="label">VO₂max Final (auto-calculado)</div><div className="value" style={{color:'#D4901A'}}>{assessForm.vo2.vo2max_final} ml/kg/min</div></div>}
+              </div>}
+
+              {/* 5. HANDGRIP */}
+              {entryTab==='strength'&&<div style={{display:'flex',flexDirection:'column',gap:12}}>
+                <div className="g2">
+                  <div className="card">
+                    <div className="card-head"><h3>Mano Izquierda</h3></div>
+                    <div className="card-body" style={{display:'flex',flexDirection:'column',gap:8}}>
+                      {['l1','l2','l3'].map((k,i)=><Field key={k} label={`Intento ${i+1}`} value={assessForm.strength[`grip_L${k}`]} onChange={v=>setA(`strength.grip_L${k}`,v)} type="number" unit="kg"/>)}
+                      {assessForm.strength.grip_L_avg!=null&&<div className="metric"><div className="label">Promedio L</div><div className="value" style={{color:'#2D7A5E'}}>{assessForm.strength.grip_L_avg} kg</div></div>}
+                    </div>
+                  </div>
+                  <div className="card">
+                    <div className="card-head"><h3>Mano Derecha</h3></div>
+                    <div className="card-body" style={{display:'flex',flexDirection:'column',gap:8}}>
+                      {['l1','l2','l3'].map((k,i)=><Field key={k} label={`Intento ${i+1}`} value={assessForm.strength[`grip_R${k}`]} onChange={v=>setA(`strength.grip_R${k}`,v)} type="number" unit="kg"/>)}
+                      {assessForm.strength.grip_R_avg!=null&&<div className="metric"><div className="label">Promedio R</div><div className="value" style={{color:'#2D7A5E'}}>{assessForm.strength.grip_R_avg} kg</div></div>}
+                    </div>
+                  </div>
+                </div>
+                {assessForm.strength.grip_total_avg!=null&&<div className="g4">
+                  <div className="kpi"><div className="label">Total Avg</div><div className="value" style={{color:'#747A4E'}}>{assessForm.strength.grip_total_avg}</div></div>
+                  <div className="kpi"><div className="label">Asimetría</div><div className="value" style={{color:assessForm.strength.grip_asym_pct>10?'#C0392B':assessForm.strength.grip_asym_pct>5?'#D4901A':'#2D7A5E'}}>{assessForm.strength.grip_asym_pct}%</div></div>
+                  <div className="kpi"><div className="label">Promedio L</div><div className="value">{assessForm.strength.grip_L_avg}</div></div>
+                  <div className="kpi"><div className="label">Promedio R</div><div className="value">{assessForm.strength.grip_R_avg}</div></div>
+                </div>}
+              </div>}
+
+              {/* 6. ENDURANCE / BALANCE */}
+              {entryTab==='functional'&&<div style={{display:'flex',flexDirection:'column',gap:12}}>
+                <div className="fg2">
+                  <Field label="Push-ups (reps)" value={assessForm.functional.pushup_reps} onChange={v=>setA('functional.pushup_reps',v)} type="number"/>
+                  <Field label="Calidad push-up" value={assessForm.functional.pushup_quality} onChange={v=>setA('functional.pushup_quality',v)} as="select" options={['Full ROM','Partial ROM','Poor form']}/>
+                </div>
+                <div style={{display:'flex',alignItems:'center',gap:10}}>
+                  <input type="checkbox" checked={!!assessForm.functional.balance_required} onChange={e=>setA('functional.balance_required',e.target.checked)} id="balReq"/>
+                  <label htmlFor="balReq" style={{fontSize:12,color:'var(--muted)',cursor:'pointer'}}>Activar Balance (automático para 60+)</label>
+                </div>
+                {assessForm.functional.balance_required&&<div className="fg2">
+                  <Field label="Balance Izq." value={assessForm.functional.balance_l_sec} onChange={v=>setA('functional.balance_l_sec',v)} type="number" unit="seg"/>
+                  <Field label="Balance Der." value={assessForm.functional.balance_r_sec} onChange={v=>setA('functional.balance_r_sec',v)} type="number" unit="seg"/>
+                  <Field label="Balance Score" value={assessForm.functional.balance_score} onChange={v=>setA('functional.balance_score',v)} type="number" unit="/100"/>
+                  <Field label="Protocolo" value={assessForm.functional.balance_notes} onChange={v=>setA('functional.balance_notes',v)}/>
+                </div>}
+              </div>}
+
+              {/* 7. TARGETS */}
+              {entryTab==='targets'&&<div className="fg2">
+                <Field label="Inicio ciclo" value={assessForm.targets.target_date?assessForm.assessment_date:''} onChange={v=>setA('assessment_date',v)} type="date"/>
+                <Field label="Fecha objetivo" value={assessForm.targets.target_date} onChange={v=>setA('targets.target_date',v)} type="date"/>
+                <Field label="Target BF%" value={assessForm.targets.target_bf_pct} onChange={v=>setA('targets.target_bf_pct',v)} type="number" unit="%"/>
+                <Field label="Target Músculo" value={assessForm.targets.target_muscle_kg} onChange={v=>setA('targets.target_muscle_kg',v)} type="number" unit="kg"/>
+                <Field label="Target Bio Age" value={assessForm.targets.target_bio_age} onChange={v=>setA('targets.target_bio_age',v)} type="number"/>
+                <Field label="Target VO₂" value={assessForm.targets.target_vo2} onChange={v=>setA('targets.target_vo2',v)} type="number" unit="ml/kg/min"/>
+                <Field label="Target HR" value={assessForm.targets.target_hr} onChange={v=>setA('targets.target_hr',v)} type="number" unit="bpm"/>
+                <Field label="Target BP" value={assessForm.targets.target_bp} onChange={v=>setA('targets.target_bp',v)} type="number" unit="mmHg sys"/>
+                <Field label="Target Grip" value={assessForm.targets.target_grip} onChange={v=>setA('targets.target_grip',v)} type="number" unit="kg"/>
+                <Field label="Target Push-ups" value={assessForm.targets.target_pushups} onChange={v=>setA('targets.target_pushups',v)} type="number" unit="reps"/>
+                <Field label="Tipo progresión" value={assessForm.targets.progression_type} onChange={v=>setA('targets.progression_type',v)} as="select" options={['Horizontal','Vertical','Diagonal']}/>
+              </div>}
+              {entryTab==='targets'&&<Field label="Notas de estrategia" value={assessForm.targets.strategy_notes} onChange={v=>setA('targets.strategy_notes',v)} as="textarea"/>}
+
+              {/* DIRECTION */}
+              {entryTab==='direction'&&<div className="g2">
+                <Field label="Diagnóstico" value={assessForm.direction.diagnosis} onChange={v=>setA('direction.diagnosis',v)} as="textarea"/>
+                <Field label="Brecha" value={assessForm.direction.gap} onChange={v=>setA('direction.gap',v)} as="textarea"/>
+                <Field label="Estrategia" value={assessForm.direction.strategy} onChange={v=>setA('direction.strategy',v)} as="textarea"/>
+                <Field label="Recomendación" value={assessForm.direction.recommendation} onChange={v=>setA('direction.recommendation',v)} as="textarea"/>
+              </div>}
+
+              <div className="footer-actions" style={{marginTop:16}}>
+                <button className="btn" onClick={()=>saveBlock(entryTab)} disabled={saving===entryTab}>{saving===entryTab?'Guardando...':'Guardar bloque'}</button>
+                <button className="btn primary" onClick={finalizeAssessment}>✓ Completar evaluación</button>
+              </div>
+            </div>
+          </div>
+        </>}
+
+        {/* ═══ REVIEW ═══ */}
+        {route==='/review'&&selectedClient&&selectedAssessment&&<>
+          {/* Hero */}
+          <div className="hero fade-up">
+            <div className="card hero-copy">
+              <div className="eyebrow">{selectedAssessment.category_final||selectedClient.category} · TEVA Review</div>
+              <h2>{selectedClient.name}</h2>
+              <p>El Review no explica todo — dirige. Estas métricas se priorizan según la categoría del cliente para transformar información en claridad, claridad en dirección y dirección en acción.</p>
+              <div className="hero-meta">
+                {[['Fecha',fmt(selectedAssessment.assessment_date)],['Coach',selectedClient.trainer||'—'],['Tipo',selectedAssessment.assessment_type],['vs anterior',prevAssessment?fmt(prevAssessment.assessment_date):'Primera sesión']].map(([k,v])=><div key={k} className="mini"><div className="k">{k}</div><div className="v" style={{fontSize:'clamp(13px,1.2vw,18px)'}}>{v}</div></div>)}
+              </div>
+            </div>
+            <div className="card">
+              <div className="card-head"><h3>Hero Metrics</h3><span className="small">Core {selectedAssessment.category_final}</span></div>
+              <div className="card-body">
+                <div className="g3">
+                  {heroMetrics.map((m,i)=><div key={i} className="kpi"><div className="label">{m.label}</div><div className="value" style={{color:CAT_COL[selectedAssessment.category_final||selectedClient.category]}}>{m.value}</div><div className="small" style={{marginTop:6}}>{m.note}</div></div>)}
+                </div>
+                {selectedAssessment.direction?.diagnosis&&<div className="diag" style={{marginTop:12}}><div className="eyebrow">Diagnóstico</div><p>{selectedAssessment.direction.diagnosis}</p></div>}
+              </div>
+            </div>
+          </div>
+
+          {/* Body Composition */}
+          <div className="g2 fade-up">
+            <div className="card">
+              <div className="card-head"><h3>Composición Corporal</h3><span className="small">Evolt 360</span></div>
+              <div className="card-body">
+                <div className="g4">
+                  {[['Peso',selectedAssessment.body?.weight_kg,'kg'],['Músculo',selectedAssessment.body?.skeletal_muscle_kg,'kg'],['Grasa %',selectedAssessment.body?.body_fat_pct,'%'],['Bio Age',selectedAssessment.body?.bio_age,'']].map(([l,v,u])=><div key={l} className="metric"><div className="label">{l}</div><div className="value">{safe(v,'—')}{u&&<span style={{fontSize:12,color:'var(--soft)',marginLeft:2}}>{u}</span>}</div>{prevAssessment&&Number.isFinite(Number(v))&&Number.isFinite(Number(prevAssessment.body?.[Object.keys(selectedAssessment.body||{}).find(k=>selectedAssessment.body[k]==v)]))&&<div className="metric compare" style={{fontSize:11,color:'var(--soft)',marginTop:4}}>vs anterior</div>}</div>)}
+                </div>
+                <div className="line"/>
+                <div className="seg-grid">
+                  {[['left_arm','Brazo I'],['right_arm','Brazo D'],['trunk','Tronco'],['left_leg','Pierna I'],['right_leg','Pierna D']].map(([zone,label])=>{const seg=selectedAssessment.segmental?.[zone];return <div key={zone} className="seg"><h5>{label}</h5><div className="v">{safe(seg?.lean,'—')}<span style={{fontSize:10,color:'var(--soft)'}}>L</span></div><div style={{fontSize:13,color:'#D4901A',fontWeight:700,marginTop:2}}>{safe(seg?.fat,'—')}<span style={{fontSize:10,color:'var(--soft)'}}>F</span></div><span className={`badge ${String(seg?.state||'Normal').toLowerCase()==='over'?'burnt':String(seg?.state||'Normal').toLowerCase()==='under'?'reset':'hypert'}`}>{seg?.state||'Normal'}</span></div>;})}
+                </div>
+              </div>
+            </div>
+
+            {/* Strength */}
+            <div className="card">
+              <div className="card-head"><h3>Fuerza & Funcional</h3><span className="small">Handgrip + Endurance</span></div>
+              <div className="card-body">
+                <div className="g4">
+                  {[['Grip L',selectedAssessment.strength?.grip_L_avg,'kg'],['Grip R',selectedAssessment.strength?.grip_R_avg,'kg'],['Grip Total',selectedAssessment.strength?.grip_total_avg,'kg'],['Asimetría',Number.isFinite(Number(selectedAssessment.strength?.grip_asym_pct))?`${selectedAssessment.strength.grip_asym_pct}%`:'—','']].map(([l,v,u])=><div key={l} className="metric"><div className="label">{l}</div><div className="value">{safe(v,'—')}{u&&<span style={{fontSize:11,color:'var(--soft)',marginLeft:2}}>{u}</span>}</div></div>)}
+                </div>
+                <div className="line"/>
+                <div className="g3">
+                  <div className="pmini"><div className="label">Push-ups</div><div className="value">{safe(selectedAssessment.functional?.pushup_reps,'—')}</div></div>
+                  <div className="pmini"><div className="label">VO₂max Final</div><div className="value" style={{color:'#D4901A'}}>{safe(selectedAssessment.vo2?.vo2max_final||selectedAssessment.vo2?.vo2max_estimated,'—')}</div></div>
+                  <div className="pmini"><div className="label">Blood Pressure</div><div className="value">{`${selectedAssessment.vitals?.systolic||'—'}/${selectedAssessment.vitals?.diastolic||'—'}`}</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Comparison chart */}
+          <div className="card fade-up">
+            <div className="card-head"><h3>Comparación</h3><span className="small">{prevAssessment?`${fmt(prevAssessment.assessment_date)} vs ${fmt(selectedAssessment.assessment_date)}`:'Sin sesión anterior'}</span></div>
+            <div className="card-body"><div ref={compareRef} className="plot-sm"/></div>
+          </div>
+
+          {/* Smart Interpretation */}
+          <div className="card fade-up">
+            <div className="card-head"><h3>Interpretación inteligente</h3><span className="small">Lectura automática del cambio</span></div>
+            <div className="card-body">
+              {!interps.length?<div className="empty">Se necesita al menos una sesión previa para interpretar cambios.</div>
+              :<div className="alist">{interps.map((item,idx)=><div key={idx} className="arow active">
+                <div className="status-row" style={{justifyContent:'space-between'}}><strong>{item.label}</strong><span className={`badge ${item.tone==='positive'?'reset':'burnt'}`}>{item.tone==='positive'?'Positivo':'Alerta'}</span></div>
+                <p style={{fontSize:12,color:'var(--muted)',marginTop:6,lineHeight:1.7}}>{item.text}</p>
+                <div className="status-row" style={{marginTop:6}}><span className="pill">Δ {item.delta}</span><span className="pill">{item.pct>0?'+':''}{item.pct}%</span></div>
+              </div>)}</div>}
+            </div>
+          </div>
+
+          {/* Mobility */}
+          <div className="card fade-up">
+            <div className="card-head"><h3>Movilidad & Movimiento</h3><span className="small">Yogger · protocolo TEVA</span></div>
+            <div className="card-body">
+              <div className="g4" style={{marginBottom:14}}>
+                {[['Movement',selectedAssessment.mobility?.movement_score],['Stability',selectedAssessment.mobility?.stability_score],['Mobility',selectedAssessment.mobility?.mobility_score],['Asymmetry',Number.isFinite(Number(selectedAssessment.mobility?.asymmetry_index))?`${selectedAssessment.mobility.asymmetry_index}%`:'—']].map(([l,v])=><div key={l} className="metric"><div className="label">{l}</div><div className="value">{safe(v,'—')}</div></div>)}
+              </div>
+              <div className="mob-layout">
+                {/* Silhouette map */}
+                <div>
+                  <div className="sil-box">
+                    <svg viewBox="0 0 320 500">
+                      <g fill="rgba(187,196,212,.16)" stroke="rgba(255,255,255,.05)" strokeWidth="1.5">
+                        <circle cx="160" cy="64" r="28"/><path d="M131 96 C115 110,110 138,115 160 L126 226 C128 240,138 250,149 255 L171 255 C182 250,192 240,194 226 L205 160 C210 138,205 110,189 96 Z"/><path d="M114 122 L81 214 C74 231,80 247,95 254 L111 259 L126 190 Z"/><path d="M206 122 L239 214 C246 231,240 247,225 254 L209 259 L194 190 Z"/><path d="M150 255 L137 364 C135 385,142 405,156 414 L160 416 L164 414 C178 405,185 385,183 364 L170 255 Z"/><path d="M137 364 L125 472 C124 481,130 488,139 488 L148 488 L154 419 Z"/><path d="M183 364 L195 472 C196 481,190 488,181 488 L172 488 L166 419 Z"/>
+                      </g>
+                      <g>
+                        <circle className={`glow-r ${spot==='left_arm'?'active':''}`} cx="83" cy="205" r="34" fill="rgba(212,144,26,.45)"/>
+                        <circle className={`glow-r ${spot==='right_arm'?'active':''}`} cx="237" cy="205" r="34" fill="rgba(212,144,26,.45)"/>
+                        <rect className={`glow-r ${spot==='trunk'?'active':''}`} x="126" y="146" width="68" height="102" rx="20" fill="rgba(196,165,102,.44)"/>
+                        <circle className={`glow-r ${spot==='left_leg'?'active':''}`} cx="136" cy="398" r="38" fill="rgba(116,122,78,.44)"/>
+                        <circle className={`glow-r ${spot==='right_leg'?'active':''}`} cx="184" cy="398" r="38" fill="rgba(45,122,94,.44)"/>
+                      </g>
+                    </svg>
+                    {[['left_arm','s1','OHS',selectedAssessment.mobility?.tests?.overhead_squat?.score],['right_arm','s2','SLS',selectedAssessment.mobility?.tests?.single_leg_squat?.score],['trunk','s3','Stand. Flex',selectedAssessment.mobility?.tests?.standing_flexion?.score],['left_leg','s4','Lunge',selectedAssessment.mobility?.tests?.forward_lunge?.score],['right_leg','s5','Movement',selectedAssessment.mobility?.movement_score]].map(([k,pos,label,val])=><div key={k} className={`spot ${pos} ${spot===k?'active':''}`} onClick={()=>setSpot(k)}><strong>{label}</strong>{safe(val,'—')}</div>)}
+                  </div>
+                  {(()=>{const m={left_arm:{label:'Overhead Squat',detail:'Movilidad global y control superior. Carga en cadena cinética.'},right_arm:{label:'Single-Leg Squat',detail:'Control unilateral y asimetría. Sensibilidad alta.'},trunk:{label:'Standing Flexion Trunk',detail:'Control del tronco y flexión global del sistema.'},left_leg:{label:'Forward Lunge',detail:'Patrón funcional unilateral en desplazamiento.'},right_leg:{label:'Movement Score',detail:'Síntesis global del output de movimiento.'}};const sel=m[spot];return <div className="diag" style={{marginTop:10}}><div className="eyebrow">{sel.label}</div><p>{sel.detail}</p></div>;})()}
+                </div>
+                {/* Radar */}
+                <div>
+                  <div className="radar-wrap"><MobilityRadar assessment={selectedAssessment}/></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Trends */}
+          <div className="card fade-up">
+            <div className="card-head"><h3>Tendencias</h3><span className="small">Histórico del cliente</span></div>
+            <div className="card-body"><div ref={trendRef} className="plot"/></div>
+          </div>
+
+          {/* TEVA Direction */}
+          <div className="card fade-up">
+            <div className="card-head"><h3>TEVA Direction</h3><span className="small">Editable por el entrenador</span></div>
+            <div className="card-body">
+              {dirAssist&&<div className="diag" style={{marginBottom:14}}>
+                <div className="eyebrow">Direction Assist — sugerencia automática</div>
+                <p><strong>Diagnóstico:</strong> {dirAssist.diagnosis}</p>
+                <p><strong>Brecha:</strong> {dirAssist.gap}</p>
+                <p><strong>Estrategia:</strong> {dirAssist.strategy}</p>
+                <p><strong>Recomendación:</strong> {dirAssist.recommendation}</p>
+                <button className="btn" style={{marginTop:10}} onClick={()=>{const next=clone(selectedAssessment);next.direction={diagnosis:dirAssist.diagnosis,gap:dirAssist.gap,strategy:dirAssist.strategy,recommendation:dirAssist.recommendation};setDb(prev=>({...prev,assessments:prev.assessments.map(a=>a.assessment_id===next.assessment_id?next:a)}));setAssessForm(next);}}>Aplicar sugerencia</button>
+              </div>}
+              <div className="g2">
+                {[['Diagnóstico','diagnosis'],['Brecha','gap'],['Estrategia','strategy'],['Recomendación','recommendation']].map(([l,k])=><Field key={k} label={l} value={selectedAssessment.direction?.[k]||''} onChange={v=>{const next=clone(selectedAssessment);next.direction[k]=v;setDb(prev=>({...prev,assessments:prev.assessments.map(a=>a.assessment_id===next.assessment_id?next:a)}));}} as="textarea"/>)}
+              </div>
+              <div className="footer-actions" style={{marginTop:12}}>
+                <button className="btn primary" onClick={async()=>{const cur=db.assessments.find(a=>a.assessment_id===selectedAssessment.assessment_id);if(cur){await apiCall('batchUpsertRows',{rows:flattenRows(cur),assessment_id:cur.assessment_id});setStatus('Direction guardada.');}}}>Guardar Direction</button>
+              </div>
+            </div>
+          </div>
+
+          <div className="footer-actions no-print" style={{marginTop:4}}>
+            <button className="btn" onClick={()=>{if(selectedAssessment){setAssessForm(clone(selectedAssessment));window.location.hash='/entry';}}}> Editar sesión</button>
+            <button className="btn" onClick={loadData}>↻ Refresh</button>
+            <button className="btn primary" onClick={()=>window.print()}>↓ Export PDF</button>
+          </div>
+        </>}
+      </div>
+    </div>
+  </div>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
